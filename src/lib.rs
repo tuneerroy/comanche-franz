@@ -49,3 +49,9 @@ where
         serde_json::to_string(self).expect("Failed to serialize record")
     }
 }
+
+pub trait Service {
+    fn serve_command(&mut self, _command: String) -> String {
+        panic!("Not implemented");
+    }
+}

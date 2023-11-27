@@ -1,15 +1,14 @@
-mod broker;
+use broker::Broker;
+use comanche_franz::Service;
+use consumer::Consumer;
+use producer::Producer;
+
 mod producer;
 mod consumer;
-
-// fn setup() {
-//     thread::spawn(|| {
-//         server::run_server(ADDRESS);
-//     });
-// }
+mod broker;
 
 // TODO: figure out what stateful data needs to be contained for a given service
-enum Service {
+enum ServiceType {
     Producer,
     Consumer,
     Broker
@@ -21,7 +20,7 @@ struct ServerConfig {
     _replicas: u8, // TODO: use for scaling up horizontally
 }
 
-fn parse_arguments() -> Result<(Service, ServerConfig), &'static str> {
+fn parse_arguments() -> Result<(ServiceType, ServerConfig), &'static str> {
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() < 5 {
@@ -40,10 +39,24 @@ fn parse_arguments() -> Result<(Service, ServerConfig), &'static str> {
     };
 
     match server_type.as_str() {
-        "producer" => Ok((Service::Producer, server_config)),
-        "consumer" => Ok((Service::Consumer, server_config)),
-        "broker" => Ok((Service::Broker, server_config)),
+        "producer" => Ok((ServiceType::Producer, server_config)),
+        "consumer" => Ok((ServiceType::Consumer, server_config)),
+        "broker" => Ok((ServiceType::Broker, server_config)),
         _ => Err("Invalid server type"),
+    }
+}
+
+fn get_service(service_type: ServiceType, listener: std::net::TcpListener) -> Box<dyn Service> {
+    match service_type {
+        ServiceType::Producer => {
+            Box::new(Producer::new(listener))
+        },
+        ServiceType::Consumer => {
+            Box::new(Consumer::new(listener))
+        },
+        ServiceType::Broker => {
+            Box::new(Broker::new(listener))
+        },
     }
 }
 
@@ -56,25 +69,11 @@ fn main() -> Result<(), &'static str> {
         return Err("Failed to bind to address");
     }
     let listener = tcp_connection.unwrap();
-
-    match service {
-        Service::Producer => {
-            println!("Starting producer service on {}:{}", server.address, server.port);
-            producer::run_service(listener);
-        },
-        Service::Consumer => {
-            println!("Starting consumer service on {}:{}", server.address, server.port);
-            consumer::run_service(listener);
-        },
-        Service::Broker => {
-            println!("Starting broker service on {}:{}", server.address, server.port);
-            broker::run_service(listener);
-        },
-    }
+    let _service = get_service(service, listener);
 
     loop {
         let mut buffer = String::new();
         std::io::stdin().read_line(&mut buffer).expect("Failed to read from stdin");
-        println!("You typed: {}", buffer);
+        print!("You typed: {}", buffer);
     }
 }
