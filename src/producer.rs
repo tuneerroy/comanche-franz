@@ -1,24 +1,26 @@
 use std::net::TcpListener;
 
-use comanche_franz::Service;
+use comanche_franz::{ServerId, Service};
 
 pub struct Producer {
-    handle: std::thread::JoinHandle<()>,
-    topics: Vec<String>,
+    id: ServerId,
+    brokers: Vec<ServerId>,
+    current_index: usize,
 }
 
 impl Producer {
-    pub fn new(listener: TcpListener) -> Producer {
-        let handle = std::thread::spawn(move || {
-            for stream in listener.incoming() {
-                let _stream = stream.expect("Failed to accept server stream result");
-            }
-        });
-        Producer {
-            handle,
-            topics: Vec::new(),
-        }
+    pub async fn from_terminal(terminal_args: Vec<String>) -> Result<Producer, &'static str> {
+        !unimplemented!()
+    }  
+
+    pub fn new(id: ServerId, broker: ServerId) -> Producer {
+        // TODO: make request to broker to get list of brokers
+        !unimplemented!()
     }
 }
 
-impl Service for Producer { }
+impl Service for Producer {
+    fn serve_command(&mut self, command: String) -> () {
+        !unimplemented!()
+    }
+}
