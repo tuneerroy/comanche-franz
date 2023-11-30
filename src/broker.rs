@@ -1,7 +1,7 @@
 use std::{collections::HashMap, thread};
 
 use comanche_franz::{ServerId, Service};
-use tokio::{net::TcpListener, io::AsyncReadExt};
+use tokio::{io::AsyncReadExt, net::TcpListener};
 
 pub struct Broker {
     id: ServerId,
@@ -13,13 +13,17 @@ pub struct Broker {
 impl Broker {
     pub async fn from_terminal(terminal_args: Vec<String>) -> Result<Broker, &'static str> {
         if terminal_args.len() < 2 {
-            return Err("Need argument for server port")
+            return Err("Need argument for server port");
         }
-        let id: ServerId = terminal_args[1].parse::<ServerId>().map_err(|_| "Failed to parse server port")?;
+        let id: ServerId = terminal_args[1]
+            .parse::<ServerId>()
+            .map_err(|_| "Failed to parse server port")?;
         if terminal_args.len() < 3 {
-            return Ok(Broker::new(id, None).await)
+            return Ok(Broker::new(id, None).await);
         }
-        let other_id: ServerId = terminal_args[2].parse::<ServerId>().map_err(|_| "Failed to parse other broker server port")?;
+        let other_id: ServerId = terminal_args[2]
+            .parse::<ServerId>()
+            .map_err(|_| "Failed to parse other broker server port")?;
         Ok(Broker::new(id, Some(other_id)).await)
     }
 
@@ -27,23 +31,35 @@ impl Broker {
         let mut all_brokers: Vec<ServerId>;
         let topics_to_consumers: HashMap<String, Vec<ServerId>>;
         match other {
-            Some (other_id) => {
-                all_brokers = get_all_brokers(other_id).await.expect("Failed to get all brokers");
-                topics_to_consumers = get_topics_to_consumers(other_id).await.expect("Failed to get topics to consumers");
-            },
+            Some(other_id) => {
+                all_brokers = get_all_brokers(other_id)
+                    .await
+                    .expect("Failed to get all brokers");
+                topics_to_consumers = get_topics_to_consumers(other_id)
+                    .await
+                    .expect("Failed to get topics to consumers");
+            }
             None => {
                 all_brokers = Vec::new();
                 topics_to_consumers = HashMap::new();
-            },
+            }
         }
         all_brokers.push(id);
 
         thread::spawn(move || async move {
-            let listener = TcpListener::bind(format!("localhost:{}", id)).await.expect("Failed to bind to port");
+            let listener = TcpListener::bind(format!("localhost:{}", id))
+                .await
+                .expect("Failed to bind to port");
             loop {
-                let (mut socket, _) = listener.accept().await.expect("Failed to accept connection");
+                let (mut socket, _) = listener
+                    .accept()
+                    .await
+                    .expect("Failed to accept connection");
                 let mut buffer = [0; 1024];
-                socket.read(&mut buffer).await.expect("Failed to read from socket");
+                socket
+                    .read(&mut buffer)
+                    .await
+                    .expect("Failed to read from socket");
             }
         });
 
@@ -54,7 +70,6 @@ impl Broker {
             topics_to_consumers,
         }
     }
-
 }
 
 impl Service for Broker {
@@ -69,7 +84,9 @@ async fn get_all_brokers(id: ServerId) -> Result<Vec<ServerId>, reqwest::Error> 
     Ok(brokers)
 }
 
-async fn get_topics_to_consumers(id: ServerId) -> Result<HashMap<String, Vec<ServerId>>, reqwest::Error> {
+async fn get_topics_to_consumers(
+    id: ServerId,
+) -> Result<HashMap<String, Vec<ServerId>>, reqwest::Error> {
     let response = reqwest::get(format!("localhost:{id}/topics")).await?;
     let topics_to_consumers: HashMap<String, Vec<ServerId>> = response.json().await?;
     Ok(topics_to_consumers)

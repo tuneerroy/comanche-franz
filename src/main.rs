@@ -3,15 +3,15 @@ use comanche_franz::Service;
 use consumer::Consumer;
 use producer::Producer;
 
-mod producer;
-mod consumer;
 mod broker;
+mod consumer;
+mod producer;
 
 async fn parse_arguments() -> Result<Box<dyn Service>, &'static str> {
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() < 2 {
-        return Err("Need arguments for server type")
+        return Err("Need arguments for server type");
     }
 
     let server_type = &args[1];
@@ -29,7 +29,9 @@ async fn main() -> Result<(), &'static str> {
     let _service = parse_arguments().await?;
     loop {
         let mut buffer = String::new();
-        std::io::stdin().read_line(&mut buffer).expect("Failed to read from stdin");
+        std::io::stdin()
+            .read_line(&mut buffer)
+            .expect("Failed to read from stdin");
         print!("You typed: {}", buffer);
     }
 }

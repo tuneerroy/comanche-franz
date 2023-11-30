@@ -18,7 +18,6 @@ impl Consumer {
         // list of brokers in case this consumer wants to change topics
         !unimplemented!()
     }
-
 }
 
 impl Service for Consumer {

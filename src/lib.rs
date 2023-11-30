@@ -4,7 +4,7 @@ pub type ServerId = u16;
 // use serde::{Serialize, ser::SerializeStruct};
 
 // #[derive(Debug)]
-// pub struct Record<K, V> 
+// pub struct Record<K, V>
 // where
 //     K: Serialize,
 //     V: Serialize,
