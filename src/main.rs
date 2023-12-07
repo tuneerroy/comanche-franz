@@ -1,37 +1,30 @@
 use broker::Broker;
-use comanche_franz::Service;
 use consumer::Consumer;
 use producer::Producer;
+use tokio::time::sleep;
 
 mod broker;
 mod consumer;
 mod producer;
 
-async fn parse_arguments() -> Result<Box<dyn Service>, &'static str> {
-    let args: Vec<String> = std::env::args().collect();
-
-    if args.len() < 2 {
-        return Err("Need arguments for server type");
-    }
-
-    let server_type = &args[1];
-    let terminal_args = args[2..].to_vec();
-    match server_type.as_str() {
-        "producer" => Ok(Box::new(Producer::from_terminal(terminal_args).await?)),
-        "consumer" => Ok(Box::new(Consumer::from_terminal(terminal_args).await?)),
-        "broker" => Ok(Box::new(Broker::from_terminal(terminal_args).await?)),
-        _ => return Err("Invalid server type"),
-    }
-}
-
 #[tokio::main]
-async fn main() -> Result<(), &'static str> {
-    let _service = parse_arguments().await?;
+async fn main() {
+    let broker_id = 8000;
+    let producer_id = 8001;
+    let consumer_id = 8002;
+
+    let broker = Broker::new(broker_id, None).await;
+
+    let mut producer = Producer::new(producer_id, broker.get_id()).await;
+    producer.add_topic("example topic".to_string()).await;
+
+    let mut consumer: Consumer = Consumer::new(consumer_id, broker.get_id()).await;
+    consumer.subscribe("example topic".to_string()).await;
+
+    // stall
+    eprint!("stalling");
     loop {
-        let mut buffer = String::new();
-        std::io::stdin()
-            .read_line(&mut buffer)
-            .expect("Failed to read from stdin");
-        print!("You typed: {}", buffer);
+        sleep(Duration::from_secs(1)).await;
     }
 }
+

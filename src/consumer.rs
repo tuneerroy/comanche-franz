@@ -1,6 +1,7 @@
-use std::net::TcpListener;
+use std::thread;
 
-use comanche_franz::{ServerId, Service};
+use comanche_franz::ServerId;
+use tokio::{net::TcpListener, io::AsyncReadExt};
 
 pub struct Consumer {
     id: ServerId,
@@ -9,19 +10,31 @@ pub struct Consumer {
 }
 
 impl Consumer {
-    pub async fn from_terminal(terminal_args: Vec<String>) -> Result<Consumer, &'static str> {
-        !unimplemented!()
-    }
+    pub async fn new(id: ServerId, broker: ServerId) -> Consumer {
+        let mut all_brokers: Vec<ServerId> = Vec::new();
+        all_brokers.push(id);
 
-    pub fn new(id: ServerId, broker: ServerId) -> Consumer {
-        // TODO: make request to broker to get list of topics & get
-        // list of brokers in case this consumer wants to change topics
-        !unimplemented!()
-    }
-}
+        thread::spawn(move || async move {
+            let listener = TcpListener::bind(format!("localhost:{}", id))
+                .await
+                .expect("Failed to bind to port");
+            loop {
+                let (mut socket, _) = listener
+                    .accept()
+                    .await
+                    .expect("Failed to accept connection");
+                let mut buffer = [0; 1024];
+                socket
+                    .read(&mut buffer)
+                    .await
+                    .expect("Failed to read from socket");
+            };
+        });
 
-impl Service for Consumer {
-    fn serve_command(&mut self, command: String) -> () {
-        !unimplemented!()
+        Consumer {
+            id,
+            brokers: all_brokers,
+            topics: Vec::new(),
+        }
     }
 }

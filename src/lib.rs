@@ -53,6 +53,6 @@ pub type ServerId = u16;
 //     }
 // }
 
-pub trait Service {
-    fn serve_command(&mut self, command: String);
-}
+// pub trait Service {
+//     fn serve_command(&mut self, command: String);
+// }

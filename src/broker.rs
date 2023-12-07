@@ -1,51 +1,19 @@
-use std::{collections::HashMap, thread};
+use std::{collections::{HashMap, HashSet}, thread, future::Future, process::Output};
 
-use comanche_franz::{ServerId, Service};
+use comanche_franz::ServerId;
 use tokio::{io::AsyncReadExt, net::TcpListener};
 
 pub struct Broker {
     id: ServerId,
     is_leader: bool,
-    all_brokers: Vec<ServerId>,
-    topics_to_consumers: HashMap<String, Vec<ServerId>>,
+    all_brokers: HashSet<ServerId>,
+    topics_to_consumers: HashMap<String, HashSet<ServerId>>,
+    producers_to_topics: HashMap<ServerId, HashSet<String>>,
 }
 
 impl Broker {
-    pub async fn from_terminal(terminal_args: Vec<String>) -> Result<Broker, &'static str> {
-        if terminal_args.len() < 2 {
-            return Err("Need argument for server port");
-        }
-        let id: ServerId = terminal_args[1]
-            .parse::<ServerId>()
-            .map_err(|_| "Failed to parse server port")?;
-        if terminal_args.len() < 3 {
-            return Ok(Broker::new(id, None).await);
-        }
-        let other_id: ServerId = terminal_args[2]
-            .parse::<ServerId>()
-            .map_err(|_| "Failed to parse other broker server port")?;
-        Ok(Broker::new(id, Some(other_id)).await)
-    }
-
     pub async fn new(id: ServerId, other: Option<ServerId>) -> Broker {
-        let mut all_brokers: Vec<ServerId>;
-        let topics_to_consumers: HashMap<String, Vec<ServerId>>;
-        match other {
-            Some(other_id) => {
-                all_brokers = get_all_brokers(other_id)
-                    .await
-                    .expect("Failed to get all brokers");
-                topics_to_consumers = get_topics_to_consumers(other_id)
-                    .await
-                    .expect("Failed to get topics to consumers");
-            }
-            None => {
-                all_brokers = Vec::new();
-                topics_to_consumers = HashMap::new();
-            }
-        }
-        all_brokers.push(id);
-
+        let all_brokers: HashSet<ServerId> = HashSet::new();
         thread::spawn(move || async move {
             let listener = TcpListener::bind(format!("localhost:{}", id))
                 .await
@@ -60,34 +28,45 @@ impl Broker {
                     .read(&mut buffer)
                     .await
                     .expect("Failed to read from socket");
-            }
+            };
         });
 
         Broker {
             id,
             is_leader: all_brokers.is_empty(),
-            all_brokers,
-            topics_to_consumers,
+            all_brokers: HashSet::new(),
+            topics_to_consumers: HashMap::new(),
+            producers_to_topics: HashMap::new(),
         }
     }
-}
 
-impl Service for Broker {
-    fn serve_command(&mut self, command: String) -> () {
-        !unimplemented!()
+    pub fn get_id(&self) -> ServerId {
+        self.id
+    }
+
+    pub async fn subscribe(&mut self, topic: String, consumer: ServerId) -> () {
+        if !self.topics_to_consumers.contains_key(&topic) {
+            self.topics_to_consumers.insert(topic.clone(), HashSet::new());
+        }
+        self.topics_to_consumers
+            .get_mut(&topic)
+            .unwrap()
+            .insert(consumer);
     }
 }
 
-async fn get_all_brokers(id: ServerId) -> Result<Vec<ServerId>, reqwest::Error> {
-    let response = reqwest::get(format!("localhost:{id}/brokers")).await?;
-    let brokers: Vec<ServerId> = response.json().await?;
-    Ok(brokers)
+async fn get_all_brokers(id: ServerId) -> Result<HashSet<ServerId>, reqwest::Error> {
+    // let response = reqwest::get(format!("localhost:{id}/brokers")).await?;
+    // let brokers: Vec<ServerId> = response.json().await?;
+    // Ok(brokers)
+    Ok(HashSet::new())
 }
 
 async fn get_topics_to_consumers(
     id: ServerId,
-) -> Result<HashMap<String, Vec<ServerId>>, reqwest::Error> {
-    let response = reqwest::get(format!("localhost:{id}/topics")).await?;
-    let topics_to_consumers: HashMap<String, Vec<ServerId>> = response.json().await?;
-    Ok(topics_to_consumers)
+) -> Result<HashMap<String, HashSet<ServerId>>, reqwest::Error> {
+    // let response = reqwest::get(format!("localhost:{id}/topics")).await?;
+    // let topics_to_consumers: HashMap<String, Vec<ServerId>> = response.json().await?;
+    // Ok(topics_to_consumers)
+    Ok(HashMap::new())
 }
