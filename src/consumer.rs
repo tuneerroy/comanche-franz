@@ -1,12 +1,24 @@
-use crate::partition_stream::PartitionStream;
-use std::thread;
+use std::{thread, sync::{Mutex, Arc}};
+use serde::{Deserialize, Serialize};
+
+// use crate::partition_stream::PartitionStream;
+// TEMP BECAUSE mod wasn't working
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct PartitionStream {
+    topic: String,
+    server: u16,
+    offset: usize,
+}
+
+mod listeners;
+use listeners::UpdateOffset;
 
 use warp::Filter;
 pub struct Consumer {
     // id: ServerId,
     id: u16,
     topics: Vec<String>,
-    streams: Vec<PartitionStream>,
+    streams: Arc<Mutex<Vec<PartitionStream>>>,
     //brokers: Vec<ServerId>,
 }
 
@@ -17,21 +29,31 @@ impl Consumer {
 
     // Turn into a route
     pub fn split_off_partitions(&mut self, n: usize) -> Vec<PartitionStream> {
-        return self.streams.split_off(n);
+        let mut streams = self.streams.lock().unwrap();
+        let mut partitions = Vec::new();
+        for _ in 0..n {
+            partitions.push(streams.pop().unwrap());
+        }
+        return partitions;
     }
 
     // Turn into a route
     pub fn push_stream(&mut self, stream: PartitionStream) {
-        self.streams.push(stream);
+        self.streams.lock().unwrap().push(stream);
     }
 
     pub async fn listen(&mut self) {
+        let streams_clone = self.streams.clone();
         let update_offset = warp::post()
             .and(warp::path("partitions"))
             .and(warp::body::json())
-            .map(|body: UpdateOffset| {
-                let mut stream = self.streams[body.partition as usize].clone();
-                stream.set_offset(body.offset);
+            .map(move |body: UpdateOffset| {
+                let mut streams = streams_clone.lock().unwrap();
+                for stream in streams.iter_mut() {
+                    if stream.server == body.partition { // ignoring the topic?
+                        stream.offset = body.offset;
+                    }
+                }
                 warp::reply::json(&"Offset updated")
             });
 
@@ -46,7 +68,7 @@ impl Consumer {
         Consumer {
             id,
             topics: Vec::new(),
-            streams: Vec::new(),
+            streams: Arc::new(Mutex::new(Vec::new())),
         }
     }
 }

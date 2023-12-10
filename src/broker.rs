@@ -23,21 +23,21 @@ impl Broker {
     }
 
     pub async fn listen(&mut self) {
-        // let consumer_requests_message = warp::post()
-        //     .and(warp::path("consumer/messages"))
-        //     .and(warp::body::json())
-        //     .and_then(|message: listeners::ConsumerRequestsMessage| async move {
-        //         let filename = format!("{}-{}.log", message.topic, message.partition);
-        //         let contents = utils::read_from_file(&filename, message.offset).await;
-        //         println!("Broker received consumer request: {:?}", message);
-        //         Ok::<_, warp::Rejection>(warp::reply::json(&contents))
-        //     });
+        let consumer_requests_message = warp::post()
+            .and(warp::path("consumer/messages"))
+            .and(warp::body::json())
+            .and_then(|message: listeners::ConsumerRequestsMessage| async move {
+                let filename = format!("{}-{}.log", message.topic, message.partition);
+                let contents = utils::read_from_file(&filename, message.offset).await;
+                println!("Broker received consumer request: {:?}", message);
+                Ok::<_, warp::Rejection>(warp::reply::json(&contents))
+            });
 
         let topic_to_offset = self.topic_to_offset.clone();
         let producer_sends_message = warp::post()
             .and(warp::path("producer/messages"))
             .and(warp::body::json())
-            .map(|message: listeners::ProducerSendsMessage| {
+            .map(move |message: listeners::ProducerSendsMessage| {
                 let topic_to_offset = topic_to_offset.clone();
                 let kv = format!("{}: {}", message.key, message.value);
                 let filename = format!("{}-{}.log", message.topic, message.partition);
