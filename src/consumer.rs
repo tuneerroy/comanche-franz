@@ -1,40 +1,52 @@
+use crate::partition_stream::PartitionStream;
 use std::thread;
 
-use comanche_franz::ServerId;
-use tokio::{net::TcpListener, io::AsyncReadExt};
-
+use warp::Filter;
 pub struct Consumer {
-    id: ServerId,
+    // id: ServerId,
+    id: u16,
     topics: Vec<String>,
-    brokers: Vec<ServerId>,
+    streams: Vec<PartitionStream>,
+    //brokers: Vec<ServerId>,
 }
 
 impl Consumer {
-    pub async fn new(id: ServerId, broker: ServerId) -> Consumer {
-        let mut all_brokers: Vec<ServerId> = Vec::new();
-        all_brokers.push(id);
+    pub fn get_topics(&self) -> &Vec<String> {
+        return &self.topics;
+    }
 
-        thread::spawn(move || async move {
-            let listener = TcpListener::bind(format!("localhost:{}", id))
-                .await
-                .expect("Failed to bind to port");
-            loop {
-                let (mut socket, _) = listener
-                    .accept()
-                    .await
-                    .expect("Failed to accept connection");
-                let mut buffer = [0; 1024];
-                socket
-                    .read(&mut buffer)
-                    .await
-                    .expect("Failed to read from socket");
-            };
-        });
+    // Turn into a route
+    pub fn split_off_partitions(&mut self, n: usize) -> Vec<PartitionStream> {
+        return self.streams.split_off(n);
+    }
 
+    // Turn into a route
+    pub fn push_stream(&mut self, stream: PartitionStream) {
+        self.streams.push(stream);
+    }
+
+    pub async fn listen(&mut self) {
+        let update_offset = warp::post()
+            .and(warp::path("partitions"))
+            .and(warp::body::json())
+            .map(|body: UpdateOffset| {
+                let mut stream = self.streams[body.partition as usize].clone();
+                stream.set_offset(body.offset);
+                warp::reply::json(&"Offset updated")
+            });
+
+        warp::serve(update_offset)
+            .run(([127, 0, 0, 1], self.id))
+            .await;
+    }
+
+    // pub async fn new(id: u16, broker: ServerId) -> Consumer {
+    pub async fn new(id: u16) -> Consumer {
+        // want to make thread to call listen?
         Consumer {
             id,
-            brokers: all_brokers,
             topics: Vec::new(),
+            streams: Vec::new(),
         }
     }
 }
