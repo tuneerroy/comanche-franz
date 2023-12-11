@@ -1,3 +1,5 @@
+use std::fmt::Formatter;
+
 use serde::{Deserialize, Serialize};
 
 pub type ServerId = u16;
@@ -45,9 +47,9 @@ impl PartitionId {
     }
 }
 
-impl ToString for PartitionId {
-    fn to_string(&self) -> String {
-        format!("{}-{}", self.topic, self.partition_num)
+impl std::fmt::Display for PartitionId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}-{}", self.topic, self.partition_num)
     }
 }
 
