@@ -1,4 +1,4 @@
-use comanche_franz::PartitionId;
+use comanche_franz::{PartitionId, ServerId};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -11,47 +11,54 @@ mod listeners;
 mod utils;
 
 pub struct Broker {
-    addr: u16,
-    partitions: HashMap<PartitionId, Arc<Mutex<Partition>>>,
+    addr: ServerId,
+    partitions: Arc<Mutex<HashMap<PartitionId, Partition>>>,
 }
 
 impl Broker {
     pub fn new(addr: u16) -> Broker {
         Broker {
             addr,
-            partitions: HashMap::new(),
+            partitions: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
-    pub async fn listen(&mut self) {
-        let consumer_requests_message = warp::post()
-            .and(warp::path("consumer/messages"))
-            .and(warp::body::json())
-            .and_then(|message: listeners::ConsumerRequestsMessage| async move {
-                let filename = format!("{}-{}.log", message.topic, message.partition);
-
-                let contents = utils::read_from_file(&filename, message.offset).await;
-                println!("Broker received consumer request: {:?}", message);
-                Ok::<_, warp::Rejection>(warp::reply::json(&contents))
-            });
-
-        let topic_to_offset = self.topic_to_offset.clone();
+    pub async fn listen(&'static mut self) {
         let producer_sends_message = warp::post()
-            .and(warp::path("producer/messages"))
+            .and(warp::path!(String / "messages"))
             .and(warp::body::json())
-            .map(move |message: listeners::ProducerSendsMessage| {
-                let topic_to_offset = topic_to_offset.clone();
-                let kv = format!("{}: {}", message.key, message.value);
-                let filename = format!("{}-{}.log", message.topic, message.partition);
-                utils::write_to_log_file(&filename, &kv).unwrap();
-                let mut topic_to_offset = topic_to_offset.lock().unwrap();
-                let offset = topic_to_offset.entry(message.topic.clone()).or_insert(0);
-                *offset += kv.len();
-                println!("Broker received message: {:?}", message);
-                warp::reply::json(&offset)
-            });
+            .map(
+                |partition_id: String, message: listeners::ProducerSendsMessage| {
+                    let partition_id = PartitionId::from_str(&partition_id);
+                    let partitions = self.partitions.clone();
+                    let mut partitions = partitions.lock().unwrap();
+                    let partition = partitions
+                        .entry(partition_id.clone())
+                        .or_insert_with(|| Partition::new(partition_id.to_string().clone()));
+                    partition.append(&message.value);
+                    println!("Broker received producer message: {:?}", message);
+                    warp::reply::reply()
+                },
+            );
 
-        warp::serve(consumer_requests_message.or(producer_sends_message))
+        let consumer_requests_message = warp::post()
+            .and(warp::path!(String / "messages"))
+            .and(warp::body::json())
+            .map(
+                |partition_id: String, message: listeners::ConsumerRequestsMessage| {
+                    let partition_id = PartitionId::from_str(&partition_id);
+                    let partitions = self.partitions.clone();
+                    let mut partitions = partitions.lock().unwrap();
+                    let partition = partitions
+                        .entry(partition_id.clone())
+                        .or_insert_with(|| Partition::new(partition_id.to_string().clone()));
+                    let contents = partition.read(message.offset);
+                    println!("Broker received consumer request: {:?}", message);
+                    warp::reply::json(&contents)
+                },
+            );
+
+        warp::serve(producer_sends_message.or(consumer_requests_message))
             .run(([127, 0, 0, 1], self.addr))
             .await;
     }

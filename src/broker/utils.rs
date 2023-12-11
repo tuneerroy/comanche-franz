@@ -9,7 +9,7 @@ pub struct Partition {
 }
 
 impl Partition {
-    fn new(filename: String) -> Partition {
+    pub fn new(filename: String) -> Partition {
         Partition {
             buffer: String::new(),
             fileoffset: 0,
@@ -17,7 +17,7 @@ impl Partition {
         }
     }
 
-    fn append(&mut self, message: &String) {
+    pub fn append(&mut self, message: &String) {
         self.buffer.push_str(message);
 
         if self.buffer.len() >= BUFFER_SIZE {
@@ -33,7 +33,7 @@ impl Partition {
         }
     }
 
-    fn read(&mut self, offset: usize) -> String {
+    pub fn read(&mut self, offset: usize) -> String {
         let res = if offset <= self.fileoffset {
             let mut file = std::fs::OpenOptions::new()
                 .read(true)
@@ -49,7 +49,7 @@ impl Partition {
         res + &self.buffer
     }
 
-    fn get_offset(&self) -> usize {
+    pub fn get_offset(&self) -> usize {
         self.fileoffset + self.buffer.len()
     }
 }
