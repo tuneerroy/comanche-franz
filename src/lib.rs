@@ -6,20 +6,11 @@ pub type ServerId = u16;
 pub type Topic = String;
 pub type Value = String;
 
-mod broker {
-    mod listeners;
-    mod utils;
-}
-
-mod broker_lead {
-    mod listeners;
-}
-
-mod consumer;
-
-mod producer {
-    mod utils;
-}
+pub mod broker;
+pub mod broker_lead;
+pub mod consumer;
+pub mod consumer_group;
+pub mod producer;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct PartitionId {

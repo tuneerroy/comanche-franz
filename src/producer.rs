@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use comanche_franz::{PartitionInfo, ServerId, Topic, Value};
+use crate::{PartitionInfo, ServerId, Topic, Value};
 
 mod utils;
 
