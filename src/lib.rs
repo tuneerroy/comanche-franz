@@ -6,6 +6,8 @@ pub type ServerId = u16;
 pub type Topic = String;
 pub type Value = String;
 
+pub type ConsumerGroupId = String;
+
 pub mod broker;
 pub mod broker_lead;
 pub mod consumer;
