@@ -8,25 +8,21 @@ pub type Value = String;
 
 mod broker {
     mod listeners;
-    mod requests;
     mod utils;
 }
 
 mod broker_lead {
     mod listeners;
-    mod requests;
 }
 
 mod partition_stream;
 
 mod consumer {
     mod listeners;
-    mod requests;
 }
 
 mod producer {
     mod listeners;
-    mod requests;
     mod utils;
 }
 
