@@ -1,9 +1,10 @@
-use comanche_franz::{PartitionId, ServerId};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
 use warp::Filter;
+
+use crate::{PartitionId, ServerId};
 
 use self::utils::Partition;
 
@@ -23,14 +24,14 @@ impl Broker {
         }
     }
 
-    pub async fn listen(&'static mut self) {
+    pub async fn listen(&mut self) {
         let producer_sends_message = warp::post()
             .and(warp::path!(String / "messages"))
             .and(warp::body::json())
-            .map(
-                |partition_id: String, message: listeners::ProducerSendsMessage| {
+            .map({
+                let partitions = self.partitions.clone();
+                move |partition_id: String, message: listeners::ProducerSendsMessage| {
                     let partition_id = PartitionId::from_str(&partition_id);
-                    let partitions = self.partitions.clone();
                     let mut partitions = partitions.lock().unwrap();
                     let partition = partitions
                         .entry(partition_id.clone())
@@ -38,16 +39,16 @@ impl Broker {
                     partition.append(&message.value);
                     println!("Broker received producer message: {:?}", message);
                     warp::reply::reply()
-                },
-            );
+                }
+            });
 
         let consumer_requests_message = warp::post()
             .and(warp::path!(String / "messages"))
             .and(warp::body::json())
-            .map(
-                |partition_id: String, message: listeners::ConsumerRequestsMessage| {
+            .map({
+                let partitions = self.partitions.clone();
+                move |partition_id: String, message: listeners::ConsumerRequestsMessage| {
                     let partition_id = PartitionId::from_str(&partition_id);
-                    let partitions = self.partitions.clone();
                     let mut partitions = partitions.lock().unwrap();
                     let partition = partitions
                         .entry(partition_id.clone())
@@ -55,8 +56,8 @@ impl Broker {
                     let contents = partition.read(message.offset);
                     println!("Broker received consumer request: {:?}", message);
                     warp::reply::json(&contents)
-                },
-            );
+                }
+            });
 
         warp::serve(producer_sends_message.or(consumer_requests_message))
             .run(([127, 0, 0, 1], self.addr))
