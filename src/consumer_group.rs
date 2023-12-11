@@ -2,13 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{PartitionId, PartitionInfo, ServerId, Topic};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConsumerInformation {
-    pub partition_ids: Vec<PartitionId>,
-    pub has_received_change: bool,
-}
+use crate::{ConsumerInformation, PartitionInfo, ServerId, Topic};
 
 pub struct ConsumerGroup {
     consumer_group_id: String,
@@ -40,7 +34,7 @@ impl ConsumerGroup {
         // reset consumer ids
         let mut consumer_ids = Vec::new();
         for (consumer_id, consumer_info) in self.consumer_id_to_info.iter_mut() {
-            consumer_info.partition_ids = Vec::new();
+            consumer_info.partition_infos = Vec::new();
             consumer_info.has_received_change = true;
             consumer_ids.push(*consumer_id);
         }
@@ -50,9 +44,7 @@ impl ConsumerGroup {
         for partition in partitions {
             let consumer_id = consumer_ids[i];
             let consumer_info = self.consumer_id_to_info.get_mut(&consumer_id).unwrap();
-            consumer_info
-                .partition_ids
-                .push(partition.partition_id().clone());
+            consumer_info.partition_infos.push(partition.clone());
             i = (i + 1) % consumer_ids.len();
         }
     }
@@ -69,7 +61,7 @@ impl ConsumerGroup {
 
     pub fn add_consumer(&mut self, consumer_id: ServerId, map: &TopicToPartitionInfo) {
         let consumer_info = ConsumerInformation {
-            partition_ids: Vec::new(),
+            partition_infos: Vec::new(),
             has_received_change: false,
         };
         self.consumer_id_to_info.insert(consumer_id, consumer_info);
@@ -85,7 +77,7 @@ impl ConsumerGroup {
         let consumer_info = self.consumer_id_to_info.get_mut(&consumer_id).unwrap();
         if !consumer_info.has_received_change {
             return ConsumerInformation {
-                partition_ids: Vec::new(),
+                partition_infos: Vec::new(),
                 has_received_change: false,
             };
         }

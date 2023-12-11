@@ -1,74 +1,148 @@
-use std::{thread, sync::{Mutex, Arc}};
+use reqwest::Error;
 use serde::{Deserialize, Serialize};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
-// use crate::partition_stream::PartitionStream;
-// TEMP BECAUSE mod wasn't working
+use crate::{ConsumerGroupId, ConsumerInformation, PartitionInfo, ServerId, Topic, Value};
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct PartitionStream {
-    topic: String,
-    server: u16,
-    offset: usize,
+pub struct ConsumerRequestsMessage {
+    pub offset: usize,
+    pub size: usize,
 }
 
-mod listeners;
-use listeners::UpdateOffset;
-
-use warp::Filter;
 pub struct Consumer {
-    // id: ServerId,
-    id: u16,
-    topics: Vec<String>,
-    streams: Arc<Mutex<Vec<PartitionStream>>>,
-    //brokers: Vec<ServerId>,
+    addr: ServerId,
+    broker_leader_addr: ServerId,
+    partitions: Vec<PartitionInfo>,
+    consumer_group_id: Option<ConsumerGroupId>,
 }
 
 impl Consumer {
-    pub fn get_topics(&self) -> &Vec<String> {
-        return &self.topics;
-    }
-
-    // Turn into a route
-    pub fn split_off_partitions(&mut self, n: usize) -> Vec<PartitionStream> {
-        let mut streams = self.streams.lock().unwrap();
-        let mut partitions = Vec::new();
-        for _ in 0..n {
-            partitions.push(streams.pop().unwrap());
-        }
-        return partitions;
-    }
-
-    // Turn into a route
-    pub fn push_stream(&mut self, stream: PartitionStream) {
-        self.streams.lock().unwrap().push(stream);
-    }
-
-    pub async fn listen(&mut self) {
-        let streams_clone = self.streams.clone();
-        let update_offset = warp::post()
-            .and(warp::path("partitions"))
-            .and(warp::body::json())
-            .map(move |body: UpdateOffset| {
-                let mut streams = streams_clone.lock().unwrap();
-                for stream in streams.iter_mut() {
-                    if stream.server == body.partition { // ignoring the topic?
-                        stream.offset = body.offset;
-                    }
-                }
-                warp::reply::json(&"Offset updated")
-            });
-
-        warp::serve(update_offset)
-            .run(([127, 0, 0, 1], self.id))
-            .await;
-    }
-
-    // pub async fn new(id: u16, broker: ServerId) -> Consumer {
-    pub async fn new(id: u16) -> Consumer {
-        // want to make thread to call listen?
+    pub async fn new(addr: ServerId, broker_leader_addr: ServerId) -> Consumer {
         Consumer {
-            id,
-            topics: Vec::new(),
-            streams: Arc::new(Mutex::new(Vec::new())),
+            addr,
+            broker_leader_addr,
+            partitions: Vec::new(),
+            consumer_group_id: None,
         }
+    }
+
+    pub async fn subscribe(&mut self, topic: Topic) -> Result<(), reqwest::Error> {
+        if self.consumer_group_id.is_none() {
+            return Ok(());
+        }
+
+        reqwest::Client::new()
+            .post(format!(
+                "http://localhost:{}/{}/topics",
+                self.broker_leader_addr,
+                self.consumer_group_id.as_ref().unwrap()
+            ))
+            .json(&topic)
+            .send()
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn unsubscribe(&mut self, topic: Topic) -> Result<(), reqwest::Error> {
+        if self.consumer_group_id.is_none() {
+            return Ok(());
+        }
+
+        reqwest::Client::new()
+            .delete(format!(
+                "http://localhost:{}/{}/topics/{}",
+                self.broker_leader_addr,
+                self.consumer_group_id.as_ref().unwrap(),
+                topic
+            ))
+            .send()
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn join_consumer_group(
+        &mut self,
+        consumer_group_id: ConsumerGroupId,
+    ) -> Result<(), reqwest::Error> {
+        if self.consumer_group_id.is_some() {
+            return Ok(());
+        }
+
+        reqwest::Client::new()
+            .post(format!(
+                "http://localhost:{}/consumer-groups",
+                self.broker_leader_addr
+            ))
+            .json(&consumer_group_id)
+            .send()
+            .await?;
+
+        self.consumer_group_id = Some(consumer_group_id);
+        Ok(())
+    }
+
+    pub async fn leave_consumer_group(&mut self) -> Result<(), reqwest::Error> {
+        if self.consumer_group_id.is_none() {
+            return Ok(());
+        }
+
+        reqwest::Client::new()
+            .delete(format!(
+                "http://localhost:{}/consumer-groups/{}",
+                self.broker_leader_addr,
+                self.consumer_group_id.as_ref().unwrap()
+            ))
+            .send()
+            .await?;
+
+        self.consumer_group_id = None;
+        Ok(())
+    }
+
+    pub async fn poll(&mut self) -> Result<Vec<Value>, reqwest::Error> {
+        if self.consumer_group_id.is_none() {
+            return Ok(Vec::new());
+        }
+
+        // first check if any changes to partitions
+        let res = reqwest::Client::new()
+            .get(format!(
+                "http://localhost:{}/{}/consumers/{}",
+                self.broker_leader_addr,
+                self.consumer_group_id.as_ref().unwrap(),
+                self.addr
+            ))
+            .send()
+            .await?;
+
+        let consumer_info = res.json::<ConsumerInformation>().await?;
+        if consumer_info.has_received_change {
+            self.partitions = consumer_info.partition_infos;
+        }
+
+        let mut all_values = Vec::new();
+        for partition_info in self.partitions.iter() {
+            let msg: ConsumerRequestsMessage = ConsumerRequestsMessage { offset: 0, size: 1 };
+            let res = reqwest::Client::new()
+                .get(format!(
+                    "http://localhost:{}/{}/messages",
+                    partition_info.server_id(),
+                    partition_info.partition_id(),
+                ))
+                .json(&msg)
+                .send()
+                .await?;
+
+            let values = res.json::<Vec<Value>>().await?;
+            all_values.extend(values);
+        }
+
+        Ok(all_values)
     }
 }

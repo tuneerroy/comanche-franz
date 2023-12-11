@@ -67,3 +67,9 @@ impl PartitionInfo {
         &self.server_id
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConsumerInformation {
+    pub partition_infos: Vec<PartitionInfo>,
+    pub has_received_change: bool,
+}

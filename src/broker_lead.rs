@@ -208,7 +208,7 @@ impl BrokerLead {
                 }
             });
 
-        let consumer_update_partitions = warp::get()
+        let consumer_check_group = warp::get()
             .and(warp::path!(ConsumerGroupId / "consumers" / ServerId))
             .map({
                 let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
@@ -228,7 +228,7 @@ impl BrokerLead {
                 .or(producer_remove_topic)
                 .or(consumer_subscribe)
                 .or(consumer_unsubscribe)
-                .or(consumer_update_partitions)
+                .or(consumer_check_group)
                 .or(consumer_add_group)
                 .or(consumer_remove_group),
         )

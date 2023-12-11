@@ -42,7 +42,7 @@ impl Broker {
                 }
             });
 
-        let consumer_requests_message = warp::post()
+        let consumer_requests_message = warp::get()
             .and(warp::path!(String / "messages"))
             .and(warp::body::json())
             .map({
