@@ -1,7 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-
-
 use crate::{ConsumerInformation, PartitionInfo, ServerId, Topic};
 
 pub struct ConsumerGroup {
