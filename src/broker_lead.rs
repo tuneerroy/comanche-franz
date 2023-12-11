@@ -1,13 +1,14 @@
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{Arc, Mutex},
     thread,
 };
 
 use warp::Filter;
 
 use crate::{
-    broker::Broker, consumer_group::ConsumerGroup, PartitionId, PartitionInfo, ServerId, Topic,
+    broker::Broker, consumer_group::ConsumerGroup, ConsumerGroupId, PartitionId, PartitionInfo,
+    ServerId, Topic,
 };
 
 mod utils;
@@ -15,26 +16,15 @@ mod utils;
 pub struct BrokerLead {
     addr: ServerId,
     // track which topics
-    topic_to_partitions: Arc<Mutex<HashMap<String, Vec<PartitionInfo>>>>,
+    topic_to_partitions: Arc<Mutex<HashMap<Topic, Vec<PartitionInfo>>>>,
     // how many producers producing a said topic
-    topic_to_producer_count: Arc<Mutex<HashMap<String, usize>>>,
+    topic_to_producer_count: Arc<Mutex<HashMap<Topic, usize>>>,
     // track how many partitions each broker has
     broker_partition_count: Arc<Mutex<HashMap<ServerId, usize>>>,
     // track which consumers are subscribed to which topics
-    consumers_to_groups: Arc<Mutex<HashMap<ServerId, ConsumerGroup>>>,
+    consumer_group_id_to_groups: Arc<Mutex<HashMap<ConsumerGroupId, ConsumerGroup>>>,
     // number of partitions per topic
     partition_count: usize,
-    // consumer group coordinator
-    // mapping of consumer to consumer group
-    // consumer group needs to know which partitions it's responsible for
-    // consumer group needs
-
-    // consumer requests to join a group
-    // consumser requests to leave a group
-    // consumer subscribes to a topic
-    // consumer unsubscribes from a topic
-    // if any of the above happens, needs to reach out to consumer
-    // consumer requests a message
 }
 
 impl BrokerLead {
@@ -60,7 +50,7 @@ impl BrokerLead {
             topic_to_partitions: Arc::new(Mutex::new(HashMap::new())),
             topic_to_producer_count: Arc::new(Mutex::new(HashMap::new())),
             broker_partition_count: broker_partition_count.clone(),
-            consumers_to_groups: Arc::new(Mutex::new(HashMap::new())),
+            consumer_group_id_to_groups: Arc::new(Mutex::new(HashMap::new())),
             partition_count,
         }
     }
@@ -77,7 +67,7 @@ impl BrokerLead {
                 move |topic: Topic| {
                     let mut topic_to_partitions = topic_to_partitions.lock().unwrap();
                     let mut topic_to_producer_count = topic_to_producer_count.lock().unwrap();
-                    let broker_partition_count = broker_partition_count.lock().unwrap();
+                    let mut broker_partition_count = broker_partition_count.lock().unwrap();
                     if !topic_to_partitions.contains_key(&topic) {
                         let broker_server_ids = utils::get_brokers_with_least_partitions(
                             &broker_partition_count,
@@ -94,6 +84,12 @@ impl BrokerLead {
                                 })
                                 .collect(),
                         );
+                        for broker_server_id in broker_server_ids {
+                            broker_partition_count
+                                .entry(broker_server_id)
+                                .and_modify(|count| *count += 1)
+                                .or_insert(1);
+                        }
                     }
 
                     topic_to_producer_count
@@ -105,66 +101,102 @@ impl BrokerLead {
                 }
             });
 
-        // let producer_remove_topic = warp::delete()
-        //     .and(warp::path!("topics" / String))
-        //     .and(warp::body::json())
-        //     .map(|body: ProducerRemovesTopic| {
-        //         if !self.topic_to_partitions.contains_key(&body.topic) {
-        //             return warp::reply::json(&"Topic does not exist");
-        //         }
+        let producer_remove_topic = warp::delete().and(warp::path!("topics" / String)).map({
+            let topic_to_partitions = self.topic_to_partitions.clone();
+            let topic_to_producer_count = self.topic_to_producer_count.clone();
+            let broker_partition_count = self.broker_partition_count.clone();
+            move |topic: String| {
+                let mut topic_to_partitions = topic_to_partitions.lock().unwrap();
+                let mut topic_to_producer_count = topic_to_producer_count.lock().unwrap();
+                let mut broker_partition_count = broker_partition_count.lock().unwrap();
+                if !topic_to_partitions.contains_key(&topic) {
+                    return warp::reply::json(&"Topic does not exist");
+                }
 
-        //         let producer_count = self.topic_to_producer_count.entry(body.topic.clone());
+                topic_to_producer_count
+                    .entry(topic.clone())
+                    .and_modify(|count| *count -= 1)
+                    .or_insert(0);
 
-        //         let brokers = self.topic_to_partitions.remove(&body.topic).unwrap();
-        //         for broker in brokers {
-        //             *self.broker_partition_count.entry(broker).or_insert(1) -= 1;
-        //         }
-        //         self.topic_to_consumers.remove(&body.topic);
+                if topic_to_producer_count[&topic] == 0 {
+                    // NOTE: we never remove partitions from brokers
+                    let partitions = topic_to_partitions.remove(&topic).unwrap();
+                    for partition in partitions {
+                        broker_partition_count
+                            .entry(partition.server_id)
+                            .and_modify(|count| *count -= 1)
+                            .or_insert(0);
+                    }
+                }
 
-        //         warp::reply::json(&"OK")
-        //     });
+                warp::reply::json(&"OK")
+            }
+        });
 
-        // let consumer_subscribe = warp::post()
-        //     .and(warp::path("subscribe"))
-        //     .and(warp::body::json())
-        //     .map(|body: ConsumerSubscribes| {
-        //         if !self.topic_to_partitions.contains_key(&body.topic) {
-        //             return warp::reply::json(&"Topic does not exist");
-        //         }
+        let consumer_subscribe = warp::post()
+            .and(warp::path!(ConsumerGroupId / "topics"))
+            .and(warp::body::json())
+            .map({
+                let topic_to_partitions = self.topic_to_partitions.clone();
+                let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
+                move |consumer_group_id: ConsumerGroupId, topic: Topic| {
+                    let topic_to_partitions = topic_to_partitions.lock().unwrap();
+                    let mut consumer_group_id_to_groups =
+                        consumer_group_id_to_groups.lock().unwrap();
+                    if !topic_to_partitions.contains_key(&topic) {
+                        return warp::reply::json(&"Topic does not exist");
+                    }
+                    let consumer_group = consumer_group_id_to_groups
+                        .entry(consumer_group_id.clone())
+                        .or_insert_with(|| ConsumerGroup::new(consumer_group_id));
+                    consumer_group.subscribe(&topic, &topic_to_partitions);
+                    warp::reply::json(&"OK")
+                }
+            });
 
-        //         self.topic_to_consumers
-        //             .entry(body.topic.clone())
-        //             .or_insert(HashSet::new())
-        //             .insert(body.consumer_id);
-        //         warp::reply::json(&self.topic_to_partitions[&body.topic])
-        //     });
+        let consumer_unsubscribe = warp::delete()
+            .and(warp::path!(ConsumerGroupId / "topics" / Topic))
+            .map({
+                let topic_to_partitions = self.topic_to_partitions.clone();
+                let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
+                move |consumer_group_id: ConsumerGroupId, topic: Topic| {
+                    let topic_to_partitions = topic_to_partitions.lock().unwrap();
+                    let mut consumer_group_id_to_groups =
+                        consumer_group_id_to_groups.lock().unwrap();
+                    if !topic_to_partitions.contains_key(&topic) {
+                        return warp::reply::json(&"Topic does not exist");
+                    }
+                    let consumer_group = consumer_group_id_to_groups
+                        .entry(consumer_group_id.clone())
+                        .or_insert_with(|| ConsumerGroup::new(consumer_group_id));
+                    consumer_group.unsubscribe(&topic, &topic_to_partitions);
+                    warp::reply::json(&"OK")
+                }
+            });
 
-        // let consumer_unsubscribe = warp::delete()
-        //     .and(warp::path("unsubscribe"))
-        //     .and(warp::body::json())
-        //     .map(|body: ConsumerUnsubscribes| {
-        //         if !self.topic_to_partitions.contains_key(&body.topic) {
-        //             return warp::reply::json(&"Topic does not exist");
-        //         }
+        let consumer_update_partitions = warp::get()
+            .and(warp::path!(ConsumerGroupId / "consumers" / ServerId))
+            .map({
+                let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
+                move |consumer_group_id: ConsumerGroupId, server_id: ServerId| {
+                    let mut consumer_group_id_to_groups =
+                        consumer_group_id_to_groups.lock().unwrap();
+                    let consumer_group = consumer_group_id_to_groups
+                        .entry(consumer_group_id.clone())
+                        .or_insert_with(|| ConsumerGroup::new(consumer_group_id));
+                    let changes = consumer_group.get_changes(server_id);
+                    warp::reply::json(&changes)
+                }
+            });
 
-        //         self.topic_to_consumers
-        //             .entry(body.topic.clone())
-        //             .or_insert(HashSet::new())
-        //             .remove(&body.consumer_id);
-        //         warp::reply::json(&"OK")
-        //     });
-
-        // warp::serve(
-        //     producer_add_topic
-        //         .or(producer_remove_topic)
-        //         .or(consumer_subscribe)
-        //         .or(consumer_unsubscribe),
-        // )
-        // .run(([127, 0, 0, 1], self.addr))
-        // .await;
+        warp::serve(
+            producer_add_topic
+                .or(producer_remove_topic)
+                .or(consumer_subscribe)
+                .or(consumer_unsubscribe)
+                .or(consumer_update_partitions),
+        )
+        .run(([127, 0, 0, 1], self.addr))
+        .await;
     }
-
-    // pub fn num_partitions(topic: &str) {
-    //     topic_to_partitions[topic].len()
-    // }
 }
