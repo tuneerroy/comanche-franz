@@ -1,6 +1,4 @@
-use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use warp::Filter;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ProducerAddsTopic {
