@@ -32,7 +32,7 @@ mod producer {
 
 mod utils;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct PartitionId {
     topic: Topic,
     partition_num: usize,
