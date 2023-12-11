@@ -15,18 +15,11 @@ mod broker_lead {
     mod listeners;
 }
 
-mod partition_stream;
-
-mod consumer {
-    mod listeners;
-}
+mod consumer;
 
 mod producer {
-    mod listeners;
     mod utils;
 }
-
-mod utils;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct PartitionId {
