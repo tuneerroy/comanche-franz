@@ -12,20 +12,30 @@ pub struct BrokerLeader {
     addr: u16,
     // track which partitions are on which brokers
     topic_to_partitions: HashMap<String, Vec<u16>>,
-    // track subscriptions for the sake of notifying consumers when changes
-    // to partitions
-    topic_to_consumers: HashMap<String, HashSet<u16>>,
-    // list of brokers, just so they don't get freed
-    // threads: Vec<JoinHandle<>>,
-    //brokers: Vec<u16>, // TODO: CHANGE THIS TO ACTUALLY BE BROKERS
     // track how many partitions each broker has
     broker_partition_count: HashMap<u16, usize>,
+    // track which consumers are subscribed to which topics
+    topic_to_consumers: HashMap<String, HashSet<u16>>,
+    // number of partitions per topic
+    partition_count: usize,
+}
 
-    broker_ports: Vec<u16>,
+fn get_brokers_with_least_partitions(
+    broker_partition_count: &HashMap<u16, usize>,
+    partition_count: usize,
+) -> Vec<u16> {
+    let mut min_heap = std::collections::BinaryHeap::new();
+    for (broker, count) in broker_partition_count.iter() {
+        min_heap.push((count, broker));
+    }
+    min_heap
+        .drain(..partition_count)
+        .map(|(_, broker)| *broker)
+        .collect()
 }
 
 impl BrokerLeader {
-    pub fn new(addr: u16, broker_count: usize) -> BrokerLeader {
+    pub fn new(addr: u16, broker_count: usize, partition_count: usize) -> BrokerLeader {
         let mut broker_ports = Vec::new();
         for i in 0..broker_count {
             thread::spawn(|| {
@@ -39,10 +49,9 @@ impl BrokerLeader {
         BrokerLeader {
             addr,
             topic_to_partitions: HashMap::new(),
-            topic_to_consumers: HashMap::new(),
-            // brokers: (addr..addr + broker_count as u16).collect(),
             broker_partition_count: HashMap::new(),
-            broker_ports,
+            topic_to_consumers: HashMap::new(),
+            partition_count,
         }
     }
 
@@ -55,13 +64,19 @@ impl BrokerLeader {
                     return warp::reply::json(&"Topic already exists");
                 }
 
+                let brokers = get_brokers_with_least_partitions(
+                    &self.broker_partition_count,
+                    self.partition_count,
+                );
                 self.topic_to_partitions
-                    .insert(body.topic.clone(), self.broker_ports.clone());
-                self.topic_to_consumers
+                    .insert(body.topic.clone(), brokers.clone());
+                slef.topic_to_consumers
                     .insert(body.topic.clone(), HashSet::new());
-                for broker in self.broker_ports.iter() {
-                    *self.broker_partition_count.entry(*broker).or_insert(0) += 1;
+
+                for broker in brokers {
+                    *self.broker_partition_count.entry(broker).or_insert(1) += 1;
                 }
+
                 warp::reply::json(&self.topic_to_partitions[&body.topic])
             });
 
@@ -73,11 +88,12 @@ impl BrokerLeader {
                     return warp::reply::json(&"Topic does not exist");
                 }
 
-                self.topic_to_partitions.remove(&body.topic);
-                self.topic_to_consumers.remove(&body.topic);
-                for broker in self.broker_ports.iter() {
-                    *self.broker_partition_count.entry(*broker).or_insert(1) -= 1;
+                let brokers = self.topic_to_partitions.remove(&body.topic).unwrap();
+                for broker in brokers {
+                    *self.broker_partition_count.entry(broker).or_insert(1) -= 1;
                 }
+                self.topic_to_consumers.remove(&body.topic);
+
                 warp::reply::json(&"OK")
             });
 

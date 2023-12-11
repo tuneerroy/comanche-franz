@@ -28,11 +28,9 @@ mod producer {
 
 mod utils;
 
+pub type PartitionId = String;
 pub type ServerId = u16;
-
 pub type Topic = String;
-
-
 
 // TODO: set up serialization and deserialization later
 // use serde::{Serialize, ser::SerializeStruct};

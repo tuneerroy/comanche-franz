@@ -1,29 +1,55 @@
-use std::io::Write;
+use std::io::{Read, Write};
 
-use tokio::{fs::OpenOptions, io::AsyncReadExt};
+const BUFFER_SIZE: usize = 100;
 
-pub fn write_to_log_file(filename: &String, message: &String) -> Result<(), std::io::Error> {
-    let mut file = std::fs::OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(filename)?;
-
-    file.write_all(message.as_bytes())?;
-
-    Ok(())
+pub struct Partition {
+    buffer: String,
+    fileoffset: usize,
+    filename: String,
 }
 
-pub async fn read_from_file(filename: &String, offset: usize) -> String {
-    let mut file = OpenOptions::new()
-        .read(true)
-        .open(filename)
-        .await
-        .expect("Failed to open file");
+impl Partition {
+    fn new(filename: String) -> Partition {
+        Partition {
+            buffer: String::new(),
+            fileoffset: 0,
+            filename,
+        }
+    }
 
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)
-        .await
-        .expect("Failed to read from file");
+    fn append(&mut self, message: &String) {
+        self.buffer.push_str(message);
 
-    contents[offset..].to_string()
+        if self.buffer.len() >= BUFFER_SIZE {
+            let mut file = std::fs::OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(&self.filename)
+                .unwrap();
+
+            file.write_all(self.buffer[..BUFFER_SIZE / 2].as_bytes());
+            self.fileoffset += self.buffer[..BUFFER_SIZE / 2].len();
+            self.buffer = self.buffer[BUFFER_SIZE / 2..].to_string();
+        }
+    }
+
+    fn read(&mut self, offset: usize) -> String {
+        let res = if offset <= self.fileoffset {
+            let mut file = std::fs::OpenOptions::new()
+                .read(true)
+                .open(&self.filename)
+                .unwrap();
+            let mut buffer = String::new();
+            file.read_to_string(&mut buffer);
+            buffer[offset..].to_string()
+        } else {
+            String::new()
+        };
+
+        res + &self.buffer
+    }
+
+    fn get_offset(&self) -> usize {
+        self.fileoffset + self.buffer.len()
+    }
 }
