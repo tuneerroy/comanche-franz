@@ -14,6 +14,6 @@ pub fn get_brokers_with_least_partitions(
         .into_sorted_vec()
         .iter()
         .take(partition_count)
-        .map(|(_, broker)| (*broker).clone())
+        .map(|(_, broker)| *(*broker))
         .collect()
 }

@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use serde::{Deserialize, Serialize};
+
 
 use crate::{ConsumerInformation, PartitionInfo, ServerId, Topic};
 

@@ -1,9 +1,4 @@
-use reqwest::Error;
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
 
 use crate::{ConsumerGroupId, ConsumerInformation, PartitionInfo, ServerId, Topic, Value};
 
