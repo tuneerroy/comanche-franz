@@ -1,48 +1,52 @@
 use std::collections::HashMap;
 
+use comanche_franz::{PartitionInfo, ServerId, Topic, Value};
+
+mod utils;
+
 pub struct Producer {
-    addr: u16,
-    broker_leader_addr: u16,
-    topic_to_partitions: HashMap<String, (usize, Vec<u16>)>, // (partition index for roundable, brokers)
+    addr: ServerId,
+    broker_leader_addr: ServerId,
+    topic_to_partitions: HashMap<Topic, Vec<PartitionInfo>>,
 }
 
 impl Producer {
-    pub async fn new(id: u16, broker_leader: u16) -> Producer {
+    pub async fn new(addr: ServerId, broker_leader_addr: ServerId) -> Producer {
         Producer {
-            addr: id,
-            broker_leader_addr: broker_leader,
+            addr,
+            broker_leader_addr,
             topic_to_partitions: HashMap::new(),
         }
     }
 
-    pub async fn add_topic(&mut self, topic: String) -> Result<(), reqwest::Error> {
+    pub async fn add_topic(&mut self, topic: Topic) -> Result<(), reqwest::Error> {
         if self.topic_to_partitions.contains_key(&topic) {
             return Ok(());
         }
 
         let res = reqwest::Client::new()
             .post(format!(
-                "http://localhost:{}/{}/topics",
-                self.broker_leader_addr, self.addr
+                "http://localhost:{}/topics",
+                self.broker_leader_addr
             ))
             .json(&topic)
             .send()
             .await?;
 
-        let partitions: Vec<u16> = res.json().await?;
-        self.topic_to_partitions.insert(topic, (0, partitions));
+        let partitions = res.json().await?;
+        self.topic_to_partitions.insert(topic, partitions);
         Ok(())
     }
 
-    pub async fn remove_topic(&mut self, topic: String) -> Result<(), reqwest::Error> {
+    pub async fn remove_topic(&mut self, topic: Topic) -> Result<(), reqwest::Error> {
         if !self.topic_to_partitions.contains_key(&topic) {
             return Ok(());
         }
 
         reqwest::Client::new()
             .delete(format!(
-                "http://localhost:{}/{}/topics/{}",
-                self.broker_leader_addr, self.addr, topic
+                "http://localhost:{}/topics/{}",
+                self.broker_leader_addr, topic
             ))
             .send()
             .await?;
@@ -51,25 +55,24 @@ impl Producer {
         Ok(())
     }
 
-    pub async fn send_message(
-        &mut self,
-        topic: String,
-        value: String,
-    ) -> Result<(), reqwest::Error> {
+    pub async fn send_message(&mut self, topic: Topic, value: Value) -> Result<(), reqwest::Error> {
         if !self.topic_to_partitions.contains_key(&topic) {
             return Ok(());
         }
 
-        let (partition_index, brokers) = self.topic_to_partitions.get_mut(&topic).unwrap();
-        let broker = brokers[*partition_index];
+        let partition_infos = self.topic_to_partitions.get(&topic).unwrap();
+        let i = utils::hash_value_to_range(&value, partition_infos.len());
+        let partition_info = &partition_infos[i];
+
         reqwest::Client::new()
-            .post(format!("http://localhost:{}/{}/messages", broker, topic))
+            .post(format!(
+                "http://localhost:{}/{}/messages",
+                partition_info.server_id(),
+                partition_info.partition_id(),
+            ))
             .json(&value)
             .send()
             .await?;
-
-        // increment partition index
-        *partition_index += 1;
 
         Ok(())
     }
