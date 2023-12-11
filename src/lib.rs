@@ -45,6 +45,16 @@ impl PartitionId {
             partition_num,
         }
     }
+
+    pub fn from_str(partition_id: &str) -> PartitionId {
+        let mut split = partition_id.split('-');
+        let topic = split.next().unwrap().to_string();
+        let partition_num = split.next().unwrap().parse::<usize>().unwrap();
+        PartitionId {
+            topic,
+            partition_num,
+        }
+    }
 }
 
 impl std::fmt::Display for PartitionId {
@@ -65,15 +75,6 @@ impl PartitionInfo {
             partition_id,
             server_id,
         }
-    }
-
-    pub fn from_str(s: &str) -> PartitionInfo {
-        let mut split = s.split('-');
-        let topic = split.next().unwrap().to_string();
-        let partition_num = split.next().unwrap().parse::<usize>().unwrap();
-        let partition_id = PartitionId::new(topic, partition_num);
-        let server_id = split.next().unwrap().parse::<ServerId>().unwrap();
-        PartitionInfo::new(partition_id, server_id)
     }
 
     pub fn partition_id(&self) -> &PartitionId {
