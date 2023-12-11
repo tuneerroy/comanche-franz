@@ -1,36 +1,96 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
-pub struct ConsumerGroupId(u32);
+use serde::{Deserialize, Serialize};
 
+use crate::{PartitionId, PartitionInfo, ServerId, Topic};
 
-
-pub struct ConsumerGroup {
-    pub groupId : ConsumerGroupId,
-    broker_lead : &BrokerLeader,
-    consumers : Vec<Consumer>,
-    topics : HashSet<String>
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConsumerInformation {
+    pub partition_ids: Vec<PartitionId>,
+    pub has_received_change: bool,
 }
 
-// impl ConsumerGroup {
-//     pub fn add_consumer(&mut self, new_consumer : Consumer) {
-//         // self.consumers.push(new_consumer);
-//         for topic in new_consumer.get_topics() {
-//             if !self.topics.contains(topic) {
-                
-//                 // add all partitions from topic to consumer
-//             } else {
-//                 self.topics.insert(topic);
-//                 let partitions_per_consumer = self.broker_lead.num_partitions() / (consumers.len() + 1);
-//                 for consumer in self.consumers {
-//                     for stream in consumer.split_off_partitions(partitions_per_consumer) {
-//                         new_consumer.push_stream(stream);
-//                     }
-//                 }
-//             }
-//         }
-//     }
+pub struct ConsumerGroup {
+    consumer_group_id: String,
+    consumer_id_to_info: HashMap<ServerId, ConsumerInformation>,
+    topics: HashSet<Topic>,
+}
 
-//     pub fn remove_consumer(&consumer : Consumer) {
+type TopicToPartitionInfo = HashMap<Topic, Vec<PartitionInfo>>;
 
-//     }
-// }
+impl ConsumerGroup {
+    pub fn new(consumer_group_id: String) -> ConsumerGroup {
+        ConsumerGroup {
+            consumer_group_id,
+            consumer_id_to_info: HashMap::new(),
+            topics: HashSet::new(),
+        }
+    }
+
+    fn reorganize_partitions(&mut self, map: &TopicToPartitionInfo) {
+        // gather all partitions
+        let mut partitions = Vec::new();
+        for topic in self.topics.iter() {
+            let partition_ids = map.get(topic).unwrap();
+            for partition_id in partition_ids {
+                partitions.push(partition_id.clone());
+            }
+        }
+
+        // reset consumer ids
+        let mut consumer_ids = Vec::new();
+        for (consumer_id, consumer_info) in self.consumer_id_to_info.iter_mut() {
+            consumer_info.partition_ids = Vec::new();
+            consumer_info.has_received_change = true;
+            consumer_ids.push(*consumer_id);
+        }
+
+        // assign partitions to consumers
+        let mut i = 0;
+        for partition in partitions {
+            let consumer_id = consumer_ids[i];
+            let consumer_info = self.consumer_id_to_info.get_mut(&consumer_id).unwrap();
+            consumer_info
+                .partition_ids
+                .push(partition.partition_id().clone());
+            i = (i + 1) % consumer_ids.len();
+        }
+    }
+
+    pub fn subscribe(&mut self, topic: &Topic, map: &TopicToPartitionInfo) {
+        self.topics.insert(topic.clone());
+        self.reorganize_partitions(map);
+    }
+
+    pub fn unsubscribe(&mut self, topic: &Topic, map: &TopicToPartitionInfo) {
+        self.topics.remove(topic);
+        self.reorganize_partitions(map);
+    }
+
+    pub fn add_consumer(&mut self, consumer_id: ServerId, map: &TopicToPartitionInfo) {
+        let consumer_info = ConsumerInformation {
+            partition_ids: Vec::new(),
+            has_received_change: false,
+        };
+        self.consumer_id_to_info.insert(consumer_id, consumer_info);
+        self.reorganize_partitions(map);
+    }
+
+    pub fn remove_consumer(&mut self, consumer_id: ServerId, map: &TopicToPartitionInfo) {
+        self.consumer_id_to_info.remove(&consumer_id);
+        self.reorganize_partitions(map);
+    }
+
+    pub fn get_changes(&mut self, consumer_id: ServerId) -> ConsumerInformation {
+        let consumer_info = self.consumer_id_to_info.get_mut(&consumer_id).unwrap();
+        if !consumer_info.has_received_change {
+            return ConsumerInformation {
+                partition_ids: Vec::new(),
+                has_received_change: false,
+            };
+        }
+        let res = (*consumer_info).clone();
+        consumer_info.has_received_change = false;
+        res
+    }
+}

@@ -174,6 +174,40 @@ impl BrokerLead {
                 }
             });
 
+        let consumer_add_group = warp::post()
+            .and(warp::path!(ConsumerGroupId / "consumers" / ServerId))
+            .map({
+                let topic_to_partitions = self.topic_to_partitions.clone();
+                let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
+                move |consumer_group_id: ConsumerGroupId, server_id: ServerId| {
+                    let topic_to_partitions = topic_to_partitions.lock().unwrap();
+                    let mut consumer_group_id_to_groups =
+                        consumer_group_id_to_groups.lock().unwrap();
+                    let consumer_group = consumer_group_id_to_groups
+                        .entry(consumer_group_id.clone())
+                        .or_insert_with(|| ConsumerGroup::new(consumer_group_id));
+                    consumer_group.add_consumer(server_id, &topic_to_partitions);
+                    warp::reply::json(&"OK")
+                }
+            });
+
+        let consumer_remove_group = warp::delete()
+            .and(warp::path!(ConsumerGroupId / "consumers" / ServerId))
+            .map({
+                let topic_to_partitions = self.topic_to_partitions.clone();
+                let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
+                move |consumer_group_id: ConsumerGroupId, server_id: ServerId| {
+                    let topic_to_partitions = topic_to_partitions.lock().unwrap();
+                    let mut consumer_group_id_to_groups =
+                        consumer_group_id_to_groups.lock().unwrap();
+                    let consumer_group = consumer_group_id_to_groups
+                        .entry(consumer_group_id.clone())
+                        .or_insert_with(|| ConsumerGroup::new(consumer_group_id));
+                    consumer_group.remove_consumer(server_id, &topic_to_partitions);
+                    warp::reply::json(&"OK")
+                }
+            });
+
         let consumer_update_partitions = warp::get()
             .and(warp::path!(ConsumerGroupId / "consumers" / ServerId))
             .map({
@@ -194,7 +228,9 @@ impl BrokerLead {
                 .or(producer_remove_topic)
                 .or(consumer_subscribe)
                 .or(consumer_unsubscribe)
-                .or(consumer_update_partitions),
+                .or(consumer_update_partitions)
+                .or(consumer_add_group)
+                .or(consumer_remove_group),
         )
         .run(([127, 0, 0, 1], self.addr))
         .await;
