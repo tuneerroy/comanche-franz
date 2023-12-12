@@ -142,3 +142,41 @@ async fn main() {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::thread;
+
+    use super::*;
+
+    fn run_kafka(lead_addr: ServerId) {
+        let partition_count: usize = 3;
+        let broker_count: usize = 3;
+        let broker_ids = (0..broker_count)
+            .map(|i| (8080 + i) as u16)
+            .collect::<Vec<_>>();
+        let broker_ids_clone = broker_ids.clone();
+        tokio::spawn(async move {
+            BrokerLead::new(lead_addr, broker_ids_clone, partition_count)
+                .listen()
+                .await;
+        });
+        for broker_id in broker_ids {
+            tokio::spawn(async move {
+                Broker::new(broker_id).listen().await;
+            });
+        }
+    }
+
+    #[tokio::test]
+    async fn test_producer() {
+        // WOULD BE SPUN UP IN BACKGROUND FOR RUNNING KAFKA, NOT BY CLIENT
+        let lead_addr: ServerId = 8000;
+        run_kafka(lead_addr);
+
+        // How a client would make a producer
+        let mut producer = Producer::new(lead_addr).await;
+        producer.add_topic("Best foods".to_string()).await.unwrap();
+        producer.send_message("Best foods".to_string(), "pizza is a good food".to_string()).await.unwrap();
+    }
+}
