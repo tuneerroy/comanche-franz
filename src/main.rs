@@ -10,7 +10,7 @@ enum Service {
     Consumer,
 }
 
-fn read_number<T: std::str::FromStr>(message: &str) -> T {
+fn read<T: std::str::FromStr>(message: &str) -> T {
     print!("{}", message);
     std::io::stdout().flush().unwrap();
     
@@ -22,8 +22,7 @@ fn read_number<T: std::str::FromStr>(message: &str) -> T {
                 return n;
             }
             Err(_) => {
-                eprintln!("Invalid number");
-                eprint!("{}", message);
+                eprint!("Invalid input. {}", message);
             }
         }
     }
@@ -33,7 +32,7 @@ fn read_number<T: std::str::FromStr>(message: &str) -> T {
 async fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
-        panic!("Invalid number of arguments");
+        panic!("Invalid number of arguments.");
     }
     let service = match args[1].as_str() {
         "cluster" => Service::Cluster,
@@ -43,33 +42,33 @@ async fn main() {
     };
     match service {
         Service::Cluster => {
-            let addr: ServerId = read_number("Enter server addr: ");
-            let broker_count: usize = read_number("Enter number of brokers: ");
-            let partition_count: usize = read_number("Enter number of partitions: ");
+            let addr: ServerId = read("Enter server addr: ");
+            let broker_count: usize = read("Enter number of brokers: ");
+            let partition_count: usize = read("Enter number of partitions: ");
 
             let mut broker_lead = comanche_franz::broker_lead::BrokerLead::new(addr, broker_count, partition_count);
             eprintln!("Starting broker system...");
             broker_lead.listen().await;
         }
         Service::Producer => {
-            let addr: ServerId = read_number("Enter server addr: ");
-            let broker_leader_addr: ServerId = read_number("Enter broker leader addr: ");
+            let addr: ServerId = read("Enter server addr: ");
+            let broker_leader_addr: ServerId = read("Enter broker leader addr: ");
 
             let mut producer = comanche_franz::producer::Producer::new(addr, broker_leader_addr).await;
             loop {
-                let action: usize = read_number("Enter action (0: add topic, 1: remove topic, 2: send message): ");
+                let action: usize = read("Enter action (0: add topic, 1: remove topic, 2: send message): ");
                 match action {
                     0 => {
-                        let topic: String = read_number("Enter topic: ");
+                        let topic: String = read("Enter topic: ");
                         producer.add_topic(topic).await.unwrap();
                     }
                     1 => {
-                        let topic: String = read_number("Enter topic: ");
+                        let topic: String = read("Enter topic: ");
                         producer.remove_topic(topic).await.unwrap();
                     }
                     2 => {
-                        let topic: String = read_number("Enter topic: ");
-                        let value: String = read_number("Enter value: ");
+                        let topic: String = read("Enter topic: ");
+                        let value: String = read("Enter value: ");
                         producer.send_message(topic, value).await.unwrap();
                     }
                     _ => {
@@ -79,23 +78,23 @@ async fn main() {
             }
         }
         Service::Consumer => {
-            let addr: ServerId = read_number("Enter server addr: ");
-            let broker_leader_addr: ServerId = read_number("Enter broker leader addr: ");
+            let addr: ServerId = read("Enter server addr: ");
+            let broker_leader_addr: ServerId = read("Enter broker leader addr: ");
 
             let mut consumer = consumer::Consumer::new(addr, broker_leader_addr);
             loop {
-                let action: usize = read_number("Enter action (0: subscribe, 1: unsubscribe, 2: join consumer group, 3: leave consumer group): ");
+                let action: usize = read("Enter action (0: subscribe, 1: unsubscribe, 2: join consumer group, 3: leave consumer group): ");
                 match action {
                     0 => {
-                        let topic: String = read_number("Enter topic: ");
+                        let topic: String = read("Enter topic: ");
                         consumer.subscribe(topic).await.unwrap();
                     }
                     1 => {
-                        let topic: String = read_number("Enter topic: ");
+                        let topic: String = read("Enter topic: ");
                         consumer.unsubscribe(topic).await.unwrap();
                     }
                     2 => {
-                        let consumer_group_id: String = read_number("Enter consumer group id: ");
+                        let consumer_group_id: String = read("Enter consumer group id: ");
                         consumer.join_consumer_group(consumer_group_id).await.unwrap();
                     }
                     3 => {
