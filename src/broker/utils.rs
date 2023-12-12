@@ -1,6 +1,7 @@
 use std::io::{Read, Write};
 
 const BUFFER_SIZE: usize = 100;
+const FILE_PATH: &str = "data/";
 
 pub struct Partition {
     buffer: String,
@@ -21,10 +22,11 @@ impl Partition {
         self.buffer.push_str(message);
 
         if self.buffer.len() >= BUFFER_SIZE {
+            let filename = FILE_PATH.to_string() + &self.filename;
             let mut file = std::fs::OpenOptions::new()
                 .append(true)
                 .create(true)
-                .open(&self.filename)
+                .open(&filename)
                 .unwrap();
 
             file.write_all(self.buffer[..BUFFER_SIZE / 2].as_bytes())
@@ -36,13 +38,14 @@ impl Partition {
 
     pub fn read(&mut self, offset: usize) -> String {
        if offset < self.fileoffset {
+            let filename = FILE_PATH.to_string() + &self.filename;
             let mut file = std::fs::OpenOptions::new()
                 .read(true)
-                .open(&self.filename)
+                .open(&filename)
                 .unwrap();
             let mut buffer = String::new();
             file.read_to_string(&mut buffer).unwrap();
-            buffer[offset + 1..].to_string() + &self.buffer
+            buffer[offset..].to_string() + &self.buffer
         } else {
             self.buffer[offset - self.fileoffset..].to_string()
         }
