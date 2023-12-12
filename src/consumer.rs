@@ -37,7 +37,7 @@ impl Consumer {
         let message = ConsumerSubscribes { topic };
         reqwest::Client::new()
             .post(format!(
-                "http://localhost:{}/{}/topics",
+                "http://127.0.0.1:{}/{}/topics",
                 self.broker_leader_addr,
                 self.consumer_group_id.as_ref().unwrap()
             ))
@@ -56,7 +56,7 @@ impl Consumer {
 
         reqwest::Client::new()
             .delete(format!(
-                "http://localhost:{}/{}/topics/{}",
+                "http://127.0.0.1:{}/{}/topics/{}",
                 self.broker_leader_addr,
                 self.consumer_group_id.as_ref().unwrap(),
                 topic
@@ -82,7 +82,7 @@ impl Consumer {
 
         reqwest::Client::new()
             .post(format!(
-                "http://localhost:{}/{}/consumers",
+                "http://127.0.0.1:{}/{}/consumers",
                 self.broker_leader_addr, consumer_group_id
             ))
             .json(&message)
@@ -101,7 +101,7 @@ impl Consumer {
 
         reqwest::Client::new()
             .delete(format!(
-                "http://localhost:{}/{}/consumers/{}",
+                "http://127.0.0.1:{}/{}/consumers/{}",
                 self.broker_leader_addr,
                 self.consumer_group_id.as_ref().unwrap(),
                 self.addr
@@ -122,7 +122,7 @@ impl Consumer {
         // first check if any changes to partitions
         let res = reqwest::Client::new()
             .get(format!(
-                "http://localhost:{}/{}/consumers/{}",
+                "http://127.0.0.1:{}/{}/consumers/{}",
                 self.broker_leader_addr,
                 self.consumer_group_id.as_ref().unwrap(),
                 self.addr
@@ -141,7 +141,7 @@ impl Consumer {
             let msg: ConsumerRequestsMessage = ConsumerRequestsMessage { offset: 0, size: 1 };
             let res = reqwest::Client::new()
                 .get(format!(
-                    "http://localhost:{}/{}/messages",
+                    "http://127.0.0.1:{}/{}/messages",
                     partition_info.server_id(),
                     partition_info.partition_id(),
                 ))

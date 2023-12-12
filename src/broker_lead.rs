@@ -1,13 +1,11 @@
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
-    thread,
 };
 
 use warp::Filter;
 
 use crate::{
-    broker::Broker,
     consumer_group::ConsumerGroup,
     listeners::{ConsumerAddGroup, ProducerAddsTopic},
     ConsumerGroupId, PartitionId, PartitionInfo, ServerId, Topic,
@@ -30,29 +28,16 @@ pub struct BrokerLead {
 }
 
 impl BrokerLead {
-    pub fn new(addr: u16, broker_count: usize, partition_count: usize) -> BrokerLead {
-        let broker_partition_count = Arc::new(Mutex::new(HashMap::new()));
-        for i in 0..broker_count {
-            let addr = addr + (i as u16) + 1;
-            broker_partition_count
-                .lock()
-                .unwrap()
-                .insert(addr, 0);
-
-            thread::spawn(
-                move || async move {
-                    // print partitions
-                    eprint!("WTF");
-                    Broker::new(addr).listen().await;
-                }
-            );
+    pub fn new(addr: u16, broker_ids: Vec<ServerId>, partition_count: usize) -> BrokerLead {
+        let mut broker_partition_count = HashMap::new();
+        for broker_id in broker_ids {
+            broker_partition_count.insert(broker_id, 0);
         }
-
         BrokerLead {
             addr,
             topic_to_partitions: Arc::new(Mutex::new(HashMap::new())),
             topic_to_producer_count: Arc::new(Mutex::new(HashMap::new())),
-            broker_partition_count,
+            broker_partition_count: Arc::new(Mutex::new(broker_partition_count)),
             consumer_group_id_to_groups: Arc::new(Mutex::new(HashMap::new())),
             partition_count,
         }

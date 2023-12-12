@@ -1,11 +1,14 @@
 use std::io::Write;
 
-use comanche_franz::{consumer, ServerId};
+use comanche_franz::{
+    broker::Broker, broker_lead::BrokerLead, consumer, producer::Producer, ServerId,
+};
 
 // TODO: make this more modular, and much cleaner
 
 enum Service {
-    Cluster,
+    Broker,
+    BrokerLead,
     Producer,
     Consumer,
 }
@@ -22,7 +25,8 @@ fn read<T: std::str::FromStr>(message: &str) -> T {
                 return n;
             }
             Err(_) => {
-                eprint!("Invalid input. {}", message);
+                eprint!("Invalid input.\n{}", message);
+                input.clear();
             }
         }
     }
@@ -35,31 +39,45 @@ async fn main() {
         panic!("Invalid number of arguments.");
     }
     let service = match args[1].as_str() {
-        "cluster" => Service::Cluster,
+        "broker" => Service::Broker,
+        "brokerlead" => Service::BrokerLead,
         "producer" => Service::Producer,
         "consumer" => Service::Consumer,
         _ => panic!("Invalid service"),
     };
     match service {
-        Service::Cluster => {
+        Service::Broker => {
+            // TODO: REMOVE THESE TEMPORARY VALUES AFTERWARDS
+            let addr: ServerId = 8080;
+            // let addr: ServerId = read("Enter server addr: ");
+
+            Broker::new(addr).listen().await;
+        }
+        Service::BrokerLead => {
             // TODO: REMOVE THESE TEMPORARY VALUES AFTERWARDS
             let addr: ServerId = 8000;
-            let broker_count: usize = 3;
             let partition_count: usize = 3;
             // let addr: ServerId = read("Enter server addr: ");
-            // let broker_count: usize = read("Enter number of brokers: ");
             // let partition_count: usize = read("Enter number of partitions: ");
 
-            let mut broker_lead =
-                comanche_franz::broker_lead::BrokerLead::new(addr, broker_count, partition_count);
-            broker_lead.listen().await;
+            let mut broker_count: usize = read("Enter number of brokers: ");
+            while broker_count < 1 {
+                eprintln!("Invalid number of brokers.");
+                broker_count = read("Enter number of brokers: ");
+            }
+            let broker_ids = (0..broker_count)
+                .map(|_| read("Enter broker addr: "))
+                .collect();
+            BrokerLead::new(addr, broker_ids, partition_count)
+                .listen()
+                .await;
         }
         Service::Producer => {
             // TODO: REMOVE THESE TEMPORARY VALUES AFTERWARDS
             let broker_leader_addr: ServerId = 8000;
             // let broker_leader_addr: ServerId = read("Enter broker leader addr: ");
-            
-            let mut producer = comanche_franz::producer::Producer::new(broker_leader_addr).await;
+
+            let mut producer = Producer::new(broker_leader_addr).await;
             loop {
                 let action: usize =
                     read("Enter action (0: add topic, 1: remove topic, 2: send message): ");

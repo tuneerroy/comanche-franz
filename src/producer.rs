@@ -88,7 +88,7 @@ impl Producer {
 
         reqwest::Client::new()
             .post(format!(
-                "http://localhost:{}/{}/messages",
+                "http://127.0.0.1:{}/{}/messages",
                 partition_info.server_id(),
                 partition_info.partition_id(),
             ))
