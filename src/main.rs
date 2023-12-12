@@ -144,8 +144,8 @@ async fn main() {
             }
         }
         Service::Tests => {
-            // test_producer().await;
-            // test_multiple_topics().await;
+            test_producer().await;
+            test_multiple_topics().await;
             test_producer_consumer().await;
         }
     }
@@ -240,24 +240,28 @@ async fn test_producer_consumer() {
         .join_consumer_group("group".to_string())
         .await
         .unwrap();
-    let res = consumer.poll().await.unwrap();
-    for val in res {
-        assert_eq!(val, "".to_string());
-    }
-
-    producer
-        .send_message("Best foods".to_string(), "pizza is a good food".to_string())
-        .await
-        .unwrap();
 
     let res = consumer.poll().await.unwrap();
+    assert_eq!(res.len(), 0);
     for val in res {
         assert_eq!(val, "".to_string());
     }
 
     consumer.subscribe("Best foods".to_string()).await.unwrap();
+    consumer.poll().await.unwrap(); // TODO: fix this
+    producer
+    .send_message("Best foods".to_string(), "pizza is a good food".to_string())
+    .await
+    .unwrap();
+
     let res = consumer.poll().await.unwrap();
+    let mut partition_count = 0;
     for val in res {
-        assert!(val == "pizza is a good food".to_string() || val == "".to_string());
+        if val == "pizza is a good food".to_string() {
+            partition_count += 1;
+        } else {
+            assert!(val == "".to_string());
+        }
     }
+    assert_eq!(partition_count, 1);
 }
