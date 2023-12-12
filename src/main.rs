@@ -47,37 +47,25 @@ async fn main() {
     };
     match service {
         Service::Broker => {
-            // TODO: REMOVE THESE TEMPORARY VALUES AFTERWARDS
-            let addr: ServerId = 8001;
-            // let addr: ServerId = read("Enter server addr: ");
-
+            let addr: ServerId = read("Enter server addr: ");
             Broker::new(addr).listen().await;
         }
         Service::BrokerLead => {
-            // TODO: REMOVE THESE TEMPORARY VALUES AFTERWARDS
-            let addr: ServerId = 8000;
-            let partition_count: usize = 3;
-            // let addr: ServerId = read("Enter server addr: ");
-            // let partition_count: usize = read("Enter number of partitions: ");
-
-            let broker_ids = vec![8001];
-            // let mut broker_count: usize = read("Enter number of brokers: ");
-            // while broker_count < 1 {
-            //     eprintln!("Invalid number of brokers.");
-            //     broker_count = read("Enter number of brokers: ");
-            // }
-            // let broker_ids = (0..broker_count)
-            //     .map(|_| read("Enter broker addr: "))
-            //     .collect();
+            let addr: ServerId = read("Enter server addr: ");
+            let partition_count: usize = read("Enter number of partitions: ");
+            let broker_count: usize = read("Enter number of brokers: ");
+            let broker_ids = (0..broker_count)
+                .map(|i| {
+                    let broker_id: ServerId = read(&format!("Enter broker {} addr: ", i));
+                    broker_id
+                })
+                .collect::<Vec<_>>();
             BrokerLead::new(addr, broker_ids, partition_count)
                 .listen()
                 .await;
         }
         Service::Producer => {
-            // TODO: REMOVE THESE TEMPORARY VALUES AFTERWARDS
-            let broker_leader_addr: ServerId = 8000;
-            // let broker_leader_addr: ServerId = read("Enter broker leader addr: ");
-
+            let broker_leader_addr: ServerId = read("Enter broker leader addr: ");
             let mut producer = Producer::new(broker_leader_addr);
             loop {
                 let action: usize =
@@ -103,12 +91,8 @@ async fn main() {
             }
         }
         Service::Consumer => {
-            // TODO: REMOVE THESE TEMPORARY VALUES AFTERWARDS
-            let addr: ServerId = 8080;
-            let broker_leader_addr: ServerId = 8000;
-            // let addr: ServerId = read("Enter server addr: ");
-            // let broker_leader_addr: ServerId = read("Enter broker leader addr: ");
-
+            let addr: ServerId = read("Enter server addr: ");
+            let broker_leader_addr: ServerId = read("Enter broker leader addr: ");
             let mut consumer = consumer::Consumer::new(addr, broker_leader_addr);
             loop {
                 let action: usize = read("Enter action (0: subscribe, 1: unsubscribe, 2: join consumer group, 3: leave consumer group, 4: poll): ");
@@ -146,8 +130,6 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
-    use std::thread;
-
     use super::*;
 
     fn run_kafka(lead_addr: ServerId, broker_addr_start: ServerId) {
