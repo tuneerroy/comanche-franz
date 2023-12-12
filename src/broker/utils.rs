@@ -1,4 +1,6 @@
-use std::io::{Read, Write};
+use std::{io::{Read, Write}, collections::HashMap};
+
+use crate::{ConsumerGroupId, consumer_group};
 
 const BUFFER_SIZE: usize = 100;
 const FILE_PATH: &str = "data/";
@@ -7,6 +9,7 @@ pub struct Partition {
     buffer: String,
     fileoffset: usize,
     filename: String,
+    consumer_group_id_to_offset: HashMap<ConsumerGroupId, usize>,
 }
 
 impl Partition {
@@ -15,7 +18,13 @@ impl Partition {
             buffer: String::new(),
             fileoffset: 0,
             filename,
+            consumer_group_id_to_offset: HashMap::new(),
         }
+    }
+
+    pub fn initialize_offset(&mut self, consumer_group_id: ConsumerGroupId) {
+        let offset = self.fileoffset + self.buffer.len(); 
+        self.consumer_group_id_to_offset.insert(consumer_group_id, offset);
     }
 
     pub fn append(&mut self, message: &String) {
@@ -36,8 +45,14 @@ impl Partition {
         }
     }
 
-    pub fn read(&mut self, offset: usize) -> String {
-        if offset < self.fileoffset {
+    pub fn read(&mut self, consumer_group_id: ConsumerGroupId) -> String {
+        let default_offset = self.fileoffset + self.buffer.len();
+        let offset = self.consumer_group_id_to_offset
+            .entry(consumer_group_id)
+            .or_insert(default_offset);
+
+        let res;
+        if *offset < self.fileoffset {
             let filename = FILE_PATH.to_string() + &self.filename;
             let mut file = std::fs::OpenOptions::new()
                 .read(true)
@@ -45,13 +60,11 @@ impl Partition {
                 .unwrap();
             let mut buffer = String::new();
             file.read_to_string(&mut buffer).unwrap();
-            buffer[offset..].to_string() + &self.buffer
+            res = buffer[*offset..].to_string() + &self.buffer;
         } else {
-            self.buffer[offset - self.fileoffset..].to_string()
+            res = self.buffer[*offset - self.fileoffset..].to_string();
         }
-    }
-
-    pub fn get_offset(&self) -> usize {
-        self.fileoffset + self.buffer.len()
+        *offset = self.fileoffset + self.buffer.len();
+        res
     }
 }

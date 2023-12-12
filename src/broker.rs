@@ -4,7 +4,7 @@ use std::{
 };
 use warp::Filter;
 
-use crate::{listeners, ConsumerResponse, PartitionId, ServerId};
+use crate::{listeners, ConsumerResponse, PartitionId, ServerId, ConsumerGroupId};
 
 use self::utils::Partition;
 
@@ -56,37 +56,41 @@ impl Broker {
                     let partition = partitions
                         .entry(partition_id.clone())
                         .or_insert_with(|| Partition::new(partition_id.to_string().clone()));
-                    let content = partition.read(message.offset);
+                    eprintln!("Broker received consumer request: {:?}", message);
+                    let content = partition.read(message.consumer_group_id);
                     let response: ConsumerResponse = ConsumerResponse {
                         value: content,
-                        new_offset: partition.get_offset(),
                     };
-                    eprintln!("Broker received consumer request: {:?}", message);
                     warp::reply::json(&response)
                 }
             });
 
-        let consumer_get_offset = warp::get().and(warp::path!(String / "offset")).map({
-            let partitions = self.partitions.clone();
-            move |partition_id: String| {
-                eprintln!("Broker received consumer request for offset");
-                let partition_id = PartitionId::from_str(&partition_id);
-                let mut partitions = partitions.lock().unwrap();
-                let partition = partitions
-                    .entry(partition_id.clone())
-                    .or_insert_with(|| Partition::new(partition_id.to_string().clone()));
-                let offset = partition.get_offset();
-                eprintln!("Broker received consumer request for offset");
-                warp::reply::json(&offset)
-            }
-        });
+        let consumer_group_offset = warp::post()
+            .and(warp::path!(String / "consumers" / ConsumerGroupId))
+            .map({
+                let partitions = self.partitions.clone();
+                move |partition_id: String, consumer_group_id: ConsumerGroupId| {
+                    eprintln!("Broker received consumer group offset: {:?}", consumer_group_id);
+                    let partition_id = PartitionId::from_str(&partition_id);
+                    let mut partitions = partitions.lock().unwrap();
+                    let partition = partitions
+                        .entry(partition_id.clone())
+                        .or_insert_with(|| Partition::new(partition_id.to_string().clone()));
+                    eprintln!("Broker received consumer group offset: {:?}", consumer_group_id);
+                    partition.initialize_offset(consumer_group_id);
+                    warp::reply::reply()
+                }
+            });
 
         warp::serve(
             producer_sends_message
                 .or(consumer_requests_message)
-                .or(consumer_get_offset),
+                .or(consumer_group_offset),
         )
         .run(([127, 0, 0, 1], self.addr))
         .await;
     }
+
+
+
 }

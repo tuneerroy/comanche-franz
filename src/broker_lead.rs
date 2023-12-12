@@ -8,7 +8,7 @@ use warp::Filter;
 use crate::{
     consumer_group::ConsumerGroup,
     listeners::{ConsumerAddGroup, ConsumerSubscribes, ProducerAddsTopic},
-    ConsumerGroupId, PartitionId, PartitionInfo, ServerId, Topic,
+    ConsumerGroupId, PartitionId, PartitionInfo, ServerId, Topic, consumer,
 };
 
 mod utils;
@@ -139,28 +139,49 @@ impl BrokerLead {
             }
         });
 
-        let consumer_subscribe = warp::post()
-            .and(warp::path!("groups" / ConsumerGroupId / "topics"))
-            .and(warp::body::json())
-            .map({
-                let topic_to_partitions = self.topic_to_partitions.clone();
-                let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
-                move |consumer_group_id: ConsumerGroupId, body: ConsumerSubscribes| {
-                    let topic = body.topic;
-                    eprintln!("BrokerLead received consumer subscribe: {:?}", topic);
-                    let topic_to_partitions = topic_to_partitions.lock().unwrap();
-                    let mut consumer_group_id_to_groups =
-                        consumer_group_id_to_groups.lock().unwrap();
-                    if !topic_to_partitions.contains_key(&topic) {
-                        return warp::reply::json(&"Topic does not exist");
-                    }
-                    let consumer_group = consumer_group_id_to_groups
-                        .entry(consumer_group_id.clone())
-                        .or_insert_with(ConsumerGroup::new);
-                    consumer_group.subscribe(&topic, &topic_to_partitions);
-                    warp::reply::json(&"OK")
-                }
-            });
+        // let consumer_subscribe = warp::post()
+        //     .and(warp::path!("groups" / ConsumerGroupId / "topics"))
+        //     .and(warp::body::json())
+        //     .and_then({
+        //         let topic_to_partitions = self.topic_to_partitions.clone();
+        //         let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
+        //         move |consumer_group_id: ConsumerGroupId, body: ConsumerSubscribes| async {
+        //             let topic = body.topic;
+        //             eprintln!("BrokerLead received consumer subscribe: {:?}", topic);
+        //             let topic_to_partitions = topic_to_partitions.lock().unwrap();
+        //             let mut consumer_group_id_to_groups =
+        //                 consumer_group_id_to_groups.lock().unwrap();
+        //             if !topic_to_partitions.contains_key(&topic) {
+        //                 return warp::reply::json(&"Topic does not exist");
+        //             }
+        //             let consumer_group = consumer_group_id_to_groups
+        //                 .entry(consumer_group_id.clone())  
+        //                 .or_insert_with(|| ConsumerGroup::new(consumer_group_id));
+        //             consumer_group.subscribe(&topic, &topic_to_partitions).await;
+        //             Ok(warp::reply::json(&"OK").into_response())
+        //         }
+        //     });
+            // .map({
+            //     let topic_to_partitions = self.topic_to_partitions.clone();
+            //     let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
+            //     move |consumer_group_id: ConsumerGroupId, body: ConsumerSubscribes| {
+            //         let topic = body.topic;
+            //         eprintln!("BrokerLead received consumer subscribe: {:?}", topic);
+            //         let topic_to_partitions = topic_to_partitions.lock().unwrap();
+            //         let mut consumer_group_id_to_groups =
+            //             consumer_group_id_to_groups.lock().unwrap();
+            //         if !topic_to_partitions.contains_key(&topic) {
+            //             return warp::reply::json(&"Topic does not exist");
+            //         }
+            //         let consumer_group = consumer_group_id_to_groups
+            //             .entry(consumer_group_id.clone())  
+            //             .or_insert_with(|| ConsumerGroup::new(consumer_group_id));
+            //         async move {
+            //             consumer_group.subscribe(&topic, &topic_to_partitions).await;
+            //         };
+            //         warp::reply::json(&"OK")
+            //     }
+            // });
 
         let consumer_unsubscribe = warp::delete()
             .and(warp::path!("groups" / ConsumerGroupId / "topics" / Topic))
@@ -177,7 +198,7 @@ impl BrokerLead {
                     }
                     let consumer_group = consumer_group_id_to_groups
                         .entry(consumer_group_id.clone())
-                        .or_insert_with(ConsumerGroup::new);
+                        .or_insert_with(|| ConsumerGroup::new(consumer_group_id));
                     consumer_group.unsubscribe(&topic, &topic_to_partitions);
                     warp::reply::json(&"OK")
                 }
@@ -197,7 +218,7 @@ impl BrokerLead {
                         consumer_group_id_to_groups.lock().unwrap();
                     let consumer_group = consumer_group_id_to_groups
                         .entry(consumer_group_id.clone())
-                        .or_insert_with(ConsumerGroup::new);
+                        .or_insert_with(|| ConsumerGroup::new(consumer_group_id));
                     consumer_group.add_consumer(server_id, &topic_to_partitions);
                     warp::reply::json(&"OK")
                 }
@@ -217,7 +238,7 @@ impl BrokerLead {
                         consumer_group_id_to_groups.lock().unwrap();
                     let consumer_group = consumer_group_id_to_groups
                         .entry(consumer_group_id.clone())
-                        .or_insert_with(ConsumerGroup::new);
+                        .or_insert_with(|| ConsumerGroup::new(consumer_group_id));
                     consumer_group.remove_consumer(server_id, &topic_to_partitions);
                     warp::reply::json(&"OK")
                 }
@@ -235,7 +256,7 @@ impl BrokerLead {
                         consumer_group_id_to_groups.lock().unwrap();
                     let consumer_group = consumer_group_id_to_groups
                         .entry(consumer_group_id.clone())
-                        .or_insert_with(ConsumerGroup::new);
+                        .or_insert_with(|| ConsumerGroup::new(consumer_group_id));
                     let changes = consumer_group.get_changes(server_id);
                     warp::reply::json(&changes)
                 }

@@ -1,15 +1,13 @@
-use std::collections::HashMap;
-
 use crate::{
     listeners::{ConsumerAddGroup, ConsumerRequestsMessage, ConsumerSubscribes},
-    ConsumerGroupId, ConsumerInformation, ConsumerResponse, PartitionInfo, PartitionInfoWithOffset,
+    ConsumerGroupId, ConsumerInformation, ConsumerResponse, PartitionInfo,
     ServerId, Topic, Value,
 };
 
 pub struct Consumer {
     addr: ServerId,
     broker_leader_addr: ServerId,
-    partitions: Vec<PartitionInfoWithOffset>,
+    partitions: Vec<PartitionInfo>,
     consumer_group_id: Option<ConsumerGroupId>,
 }
 
@@ -39,6 +37,7 @@ impl Consumer {
             .json(&message)
             .send()
             .await?;
+        
 
         Ok(())
     }
@@ -141,41 +140,15 @@ impl Consumer {
         let consumer_info = res.json::<ConsumerInformation>().await?;
         if consumer_info.has_received_change {
             eprintln!("Received change: {:?}", consumer_info);
-            // get current offsets mapping from partition id to offset
-            let mut partition_id_to_offset = HashMap::new();
-            for partition_info_with_offset in self.partitions.iter() {
-                let id = partition_info_with_offset.partition_info.partition_id();
-                let offset = partition_info_with_offset.offset();
-                partition_id_to_offset.insert(id, offset);
-            }
-
-            let partition_infos = consumer_info.partition_infos;
-            let mut new_partitions = Vec::new();
-            for partition_info in partition_infos {
-                // check if we already have it
-                if let Some(offset) = partition_id_to_offset.get(&partition_info.partition_id()) {
-                    new_partitions.push(PartitionInfoWithOffset::new(
-                        partition_info.clone(),
-                        *offset,
-                    ));
-                } else {
-                    // if not, get the offset
-                    let offset = self.get_offset(&partition_info).await?;
-                    new_partitions.push(PartitionInfoWithOffset::new(partition_info, offset));
-                }
-            }
-
-            // print out new partitions
-            eprintln!("New partitions: {:?}", new_partitions);
-            self.partitions = new_partitions;
+            self.partitions = consumer_info.partition_infos;
+            eprintln!("New partitions: {:?}", self.partitions);
         }
 
         let mut all_values = Vec::new();
-        for partition_info_with_offset in self.partitions.iter_mut() {
+        for partition_info in self.partitions.iter_mut() {
             let msg: ConsumerRequestsMessage = ConsumerRequestsMessage {
-                offset: partition_info_with_offset.offset(),
+                consumer_group_id: self.consumer_group_id.as_ref().unwrap().clone(),
             };
-            let partition_info = &partition_info_with_offset.partition_info;
             let res = reqwest::Client::new()
                 .get(format!(
                     "http://127.0.0.1:{}/{}/messages",
@@ -187,7 +160,6 @@ impl Consumer {
                 .await?;
             let res: ConsumerResponse = res.json::<ConsumerResponse>().await?;
             all_values.push(res.value);
-            partition_info_with_offset.offset = res.new_offset;
         }
 
         Ok(all_values)

@@ -1,8 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::{ConsumerInformation, PartitionInfo, ServerId, Topic};
+use crate::{ConsumerInformation, PartitionInfo, ServerId, Topic, ConsumerGroupId};
 
 pub struct ConsumerGroup {
+    id: ConsumerGroupId,
     consumer_id_to_info: HashMap<ServerId, ConsumerInformation>,
     topics: HashSet<Topic>,
 }
@@ -10,8 +11,9 @@ pub struct ConsumerGroup {
 type TopicToPartitionInfo = HashMap<Topic, Vec<PartitionInfo>>;
 
 impl ConsumerGroup {
-    pub fn new() -> ConsumerGroup {
+    pub fn new(id: ConsumerGroupId) -> ConsumerGroup {
         ConsumerGroup {
+            id,
             consumer_id_to_info: HashMap::new(),
             topics: HashSet::new(),
         }
@@ -45,19 +47,39 @@ impl ConsumerGroup {
         }
     }
 
-    pub fn subscribe(&mut self, topic: &Topic, map: &TopicToPartitionInfo) {
+    async fn initialize_offset(&self, partition_infos: &Vec<PartitionInfo>) {
+            for partition_info in partition_infos {
+                reqwest::Client::new()
+                    .post(format!(
+                        "http://127.0.0.1:{}/{}/consumers/{}",
+                        partition_info.server_id(),
+                        partition_info.partition_id(),
+                        self.id
+                    ))
+                    .send()
+                    .await
+                    .unwrap();
+        }
+    }
+
+    pub async fn subscribe(&mut self, topic: &Topic, map: &TopicToPartitionInfo) {
+        if self.topics.contains(topic) {
+            return;
+        }
+
+        self.initialize_offset(map.get(topic).unwrap()).await;
         self.topics.insert(topic.clone());
-
         eprintln!("after add, topics subscribed to: {:?}", self.topics);
-
         self.reorganize_partitions(map);
     }
 
     pub fn unsubscribe(&mut self, topic: &Topic, map: &TopicToPartitionInfo) {
+        if !self.topics.contains(topic) {
+            return;
+        }
+
         self.topics.remove(topic);
-
         eprintln!("after remove, topics subscribed to: {:?}", self.topics);
-
         self.reorganize_partitions(map);
     }
 

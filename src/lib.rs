@@ -20,7 +20,7 @@ mod listeners {
     /****************** FOR THE BROKER LISTENERS ******/
     use serde::{Deserialize, Serialize};
 
-    use crate::{ServerId, Topic, Value};
+    use crate::{ServerId, Topic, Value, ConsumerGroupId};
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct ProducerSendsMessage {
@@ -29,7 +29,7 @@ mod listeners {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct ConsumerRequestsMessage {
-        pub offset: usize,
+        pub consumer_group_id: ConsumerGroupId,
     }
 
     /****************** FOR THE BROKER LEADER LISTENERS ******/
@@ -83,25 +83,6 @@ impl std::fmt::Display for PartitionId {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PartitionInfoWithOffset {
-    pub partition_info: PartitionInfo,
-    offset: usize,
-}
-
-impl PartitionInfoWithOffset {
-    pub fn new(partition_info: PartitionInfo, offset: usize) -> PartitionInfoWithOffset {
-        PartitionInfoWithOffset {
-            partition_info,
-            offset,
-        }
-    }
-
-    pub fn offset(&self) -> usize {
-        self.offset
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PartitionInfo {
     partition_id: PartitionId,
     server_id: ServerId,
@@ -133,5 +114,4 @@ pub struct ConsumerInformation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsumerResponse {
     pub value: Value,
-    pub new_offset: usize,
 }
