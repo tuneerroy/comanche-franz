@@ -13,7 +13,7 @@ pub struct Producer {
 }
 
 impl Producer {
-    pub async fn new(broker_leader_addr: ServerId) -> Producer {
+    pub fn new(broker_leader_addr: ServerId) -> Producer {
         Producer {
             broker_leader_addr,
             topic_to_partitions: HashMap::new(),

@@ -26,7 +26,7 @@ impl Partition {
             let mut file = std::fs::OpenOptions::new()
                 .append(true)
                 .create(true)
-                .open(&filename)
+                .open(filename)
                 .unwrap();
 
             file.write_all(self.buffer[..BUFFER_SIZE / 2].as_bytes())
@@ -41,7 +41,7 @@ impl Partition {
             let filename = FILE_PATH.to_string() + &self.filename;
             let mut file = std::fs::OpenOptions::new()
                 .read(true)
-                .open(&filename)
+                .open(filename)
                 .unwrap();
             let mut buffer = String::new();
             file.read_to_string(&mut buffer).unwrap();

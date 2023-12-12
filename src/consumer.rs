@@ -118,7 +118,7 @@ impl Consumer {
             .send()
             .await?;
 
-        Ok(res.json::<usize>().await?)
+        res.json::<usize>().await
     }
 
     pub async fn poll(&mut self) -> Result<Vec<Value>, reqwest::Error> {
@@ -164,6 +164,9 @@ impl Consumer {
                     new_partitions.push(PartitionInfoWithOffset::new(partition_info, offset));
                 }
             }
+
+            // print out new partitions
+            eprintln!("New partitions: {:?}", new_partitions);
             self.partitions = new_partitions;
         }
 
