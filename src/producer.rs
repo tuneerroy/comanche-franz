@@ -81,7 +81,8 @@ impl Producer {
         }
 
         let partition_infos = self.topic_to_partitions.get(&topic).unwrap();
-        let i = utils::hash_value_to_range(&value, partition_infos.len());
+        let value_to_be_hashed = format!("{}{}", topic, value);
+        let i = utils::hash_value_to_range(&value_to_be_hashed, partition_infos.len());
         let partition_info = &partition_infos[i];
 
         let message = listeners::ProducerSendsMessage { value };
