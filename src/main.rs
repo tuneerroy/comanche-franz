@@ -150,11 +150,11 @@ mod tests {
 
     use super::*;
 
-    fn run_kafka(lead_addr: ServerId) {
+    fn run_kafka(lead_addr: ServerId, broker_addr_start: ServerId) {
         let partition_count: usize = 3;
         let broker_count: usize = 3;
         let broker_ids = (0..broker_count)
-            .map(|i| (8080 + i) as u16)
+            .map(|i| broker_addr_start + i as u16)
             .collect::<Vec<_>>();
         let broker_ids_clone = broker_ids.clone();
         tokio::spawn(async move {
@@ -173,11 +173,55 @@ mod tests {
     async fn test_producer() {
         // WOULD BE SPUN UP IN BACKGROUND FOR RUNNING KAFKA, NOT BY CLIENT
         let lead_addr: ServerId = 8000;
-        run_kafka(lead_addr);
+        run_kafka(lead_addr, 8080);
 
         // How a client would make a producer
         let mut producer = Producer::new(lead_addr).await;
         producer.add_topic("Best foods".to_string()).await.unwrap();
         producer.send_message("Best foods".to_string(), "pizza is a good food".to_string()).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_multiple_topics() {
+        // WOULD BE SPUN UP IN BACKGROUND FOR RUNNING KAFKA, NOT BY CLIENT
+        let lead_addr: ServerId = 8000;
+        run_kafka(lead_addr, 8080);
+
+        // How a client would make a producer
+        let mut producer = Producer::new(lead_addr).await;
+        producer.add_topic("Best foods".to_string()).await.unwrap();
+        producer.add_topic("Best drinks".to_string()).await.unwrap();
+        producer.send_message("Best foods".to_string(), "pizza is a good food".to_string()).await.unwrap();
+        producer.send_message("Best drinks".to_string(), "water is the only good drink".to_string()).await.unwrap();
+        producer.send_message("Best foods".to_string(), "chicken is a good food".to_string()).await.unwrap();
+        producer.send_message("Best drinks".to_string(), "milk is a good drink".to_string()).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_producer_consumer() {
+        // WOULD BE SPUN UP IN BACKGROUND FOR RUNNING KAFKA, NOT BY CLIENT
+        let lead_addr: ServerId = 8000;
+        run_kafka(lead_addr, 8080);
+
+        // How a client would make a producer
+        let mut producer = Producer::new(lead_addr).await;
+        producer.add_topic("Best foods".to_string()).await.unwrap();
+
+
+        let mut consumer = consumer::Consumer::new(8001, lead_addr);
+        let res = consumer.poll().await.unwrap();
+        let message = format!("{:?}", res);
+        assert_eq!(message, "None"); // fix this
+
+        producer.send_message("Best foods".to_string(), "pizza is a good food".to_string()).await.unwrap();
+
+        let res = consumer.poll().await.unwrap();
+        let message = format!("{:?}", res);
+        assert_eq!(message, "None"); // fix this
+
+        consumer.subscribe("Best foods".to_string()).await.unwrap();
+        let res = consumer.poll().await.unwrap();
+        let message = format!("{:?}", res);
+        assert_eq!(message, "Some(\"pizza is a good food\")"); // fix this
     }
 }
