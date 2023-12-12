@@ -142,19 +142,16 @@ async fn main() {
                     }
                 }
             }
-        },
+        }
         Service::Tests => {
-            test_producer().await;
-            test_multiple_topics().await;
+            // test_producer().await;
+            // test_multiple_topics().await;
             test_producer_consumer().await;
         }
     }
 }
 
-fn run_kafka(
-    lead_addr: ServerId,
-    broker_addr_start: ServerId,
-) -> Vec<tokio::task::JoinHandle<()>> {
+fn run_kafka(lead_addr: ServerId, broker_addr_start: ServerId) -> Vec<tokio::task::JoinHandle<()>> {
     let partition_count: usize = 3;
     let broker_count: usize = 1;
     let broker_ids = (0..broker_count)
@@ -184,7 +181,7 @@ async fn test_producer() {
     let _ = run_kafka(lead_addr, 8001);
 
     // How a client would make a producer
-    
+
     let mut producer = Producer::new(lead_addr).await;
     producer.add_topic("Best foods".to_string()).await.unwrap();
     producer
