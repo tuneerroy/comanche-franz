@@ -48,7 +48,7 @@ async fn main() {
     match service {
         Service::Broker => {
             // TODO: REMOVE THESE TEMPORARY VALUES AFTERWARDS
-            let addr: ServerId = 8080;
+            let addr: ServerId = 8001;
             // let addr: ServerId = read("Enter server addr: ");
 
             Broker::new(addr).listen().await;
