@@ -11,6 +11,7 @@ enum Service {
     BrokerLead,
     Producer,
     Consumer,
+    Tests,
 }
 
 fn read<T: std::str::FromStr>(message: &str) -> T {
@@ -43,6 +44,7 @@ async fn main() {
         "brokerlead" => Service::BrokerLead,
         "producer" => Service::Producer,
         "consumer" => Service::Consumer,
+        "test" => Service::Tests, // This should just use the tests below, but for some reason it gives a ConnectionRefused, but not when run through main
         _ => panic!("Invalid service"),
     };
     match service {
@@ -140,121 +142,125 @@ async fn main() {
                     }
                 }
             }
+        },
+        Service::Tests => {
+            test_producer().await;
+            test_multiple_topics().await;
+            test_producer_consumer().await;
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use std::thread;
-
-    use super::*;
-
-    fn run_kafka(lead_addr: ServerId, broker_addr_start: ServerId) {
-        let partition_count: usize = 3;
-        let broker_count: usize = 1;
-        let broker_ids = (0..broker_count)
-            .map(|i| broker_addr_start + i as u16)
-            .collect::<Vec<_>>();
-        let broker_ids_clone = broker_ids.clone();
-        for broker_id in broker_ids {
-            tokio::spawn(async move {
-                Broker::new(broker_id).listen().await;
-            });
-        }
-        tokio::spawn(async move {
-            BrokerLead::new(lead_addr, broker_ids_clone, partition_count)
-                .listen()
-                .await;
+fn run_kafka(
+    lead_addr: ServerId,
+    broker_addr_start: ServerId,
+) -> Vec<tokio::task::JoinHandle<()>> {
+    let partition_count: usize = 3;
+    let broker_count: usize = 1;
+    let broker_ids = (0..broker_count)
+        .map(|i| broker_addr_start + i as u16)
+        .collect::<Vec<_>>();
+    let broker_ids_clone = broker_ids.clone();
+    let mut handles = Vec::new();
+    for broker_id in broker_ids {
+        let handle = tokio::spawn(async move {
+            Broker::new(broker_id).listen().await;
         });
+        handles.push(handle);
+    }
+    let lead_handle = tokio::spawn(async move {
+        BrokerLead::new(lead_addr, broker_ids_clone, partition_count)
+            .listen()
+            .await;
+    });
+    handles.push(lead_handle);
+
+    handles
+}
+
+async fn test_producer() {
+    // WOULD BE SPUN UP IN BACKGROUND FOR RUNNING KAFKA, NOT BY CLIENT
+    let lead_addr: ServerId = 8000;
+    let _ = run_kafka(lead_addr, 8001);
+
+    // How a client would make a producer
+    
+    let mut producer = Producer::new(lead_addr).await;
+    producer.add_topic("Best foods".to_string()).await.unwrap();
+    producer
+        .send_message("Best foods".to_string(), "pizza is a good food".to_string())
+        .await
+        .unwrap();
+}
+
+async fn test_multiple_topics() {
+    // WOULD BE SPUN UP IN BACKGROUND FOR RUNNING KAFKA, NOT BY CLIENT
+    let lead_addr: ServerId = 8000;
+    let _ = run_kafka(lead_addr, 8001);
+
+    // How a client would make a producer
+    let mut producer = Producer::new(lead_addr).await;
+    producer.add_topic("Best foods".to_string()).await.unwrap();
+    producer.add_topic("Best drinks".to_string()).await.unwrap();
+    producer
+        .send_message("Best foods".to_string(), "pizza is a good food".to_string())
+        .await
+        .unwrap();
+    producer
+        .send_message(
+            "Best drinks".to_string(),
+            "water is the only good drink".to_string(),
+        )
+        .await
+        .unwrap();
+    producer
+        .send_message(
+            "Best foods".to_string(),
+            "chicken is a good food".to_string(),
+        )
+        .await
+        .unwrap();
+    producer
+        .send_message(
+            "Best drinks".to_string(),
+            "milk is a good drink".to_string(),
+        )
+        .await
+        .unwrap();
+}
+
+async fn test_producer_consumer() {
+    // WOULD BE SPUN UP IN BACKGROUND FOR RUNNING KAFKA, NOT BY CLIENT
+    let lead_addr: ServerId = 8000;
+    let _ = run_kafka(lead_addr, 8001);
+
+    // How a client would make a producer
+    let mut producer = Producer::new(lead_addr).await;
+    producer.add_topic("Best foods".to_string()).await.unwrap();
+
+    let mut consumer = consumer::Consumer::new(8080, lead_addr);
+    consumer
+        .join_consumer_group("group".to_string())
+        .await
+        .unwrap();
+    let res = consumer.poll().await.unwrap();
+    for val in res {
+        assert_eq!(val, "".to_string());
     }
 
-    #[tokio::test]
-    async fn test_producer() {
-        // WOULD BE SPUN UP IN BACKGROUND FOR RUNNING KAFKA, NOT BY CLIENT
-        let lead_addr: ServerId = 8000;
-        run_kafka(lead_addr, 8080);
+    producer
+        .send_message("Best foods".to_string(), "pizza is a good food".to_string())
+        .await
+        .unwrap();
 
-        // How a client would make a producer
-        let mut producer = Producer::new(lead_addr).await;
-        producer.add_topic("Best foods".to_string()).await.unwrap();
-        producer
-            .send_message("Best foods".to_string(), "pizza is a good food".to_string())
-            .await
-            .unwrap();
+    let res = consumer.poll().await.unwrap();
+    for val in res {
+        assert_eq!(val, "".to_string());
     }
 
-    #[tokio::test]
-    async fn test_multiple_topics() {
-        // WOULD BE SPUN UP IN BACKGROUND FOR RUNNING KAFKA, NOT BY CLIENT
-        let lead_addr: ServerId = 8000;
-        run_kafka(lead_addr, 8080);
-
-        // How a client would make a producer
-        let mut producer = Producer::new(lead_addr).await;
-        producer.add_topic("Best foods".to_string()).await.unwrap();
-        producer.add_topic("Best drinks".to_string()).await.unwrap();
-        producer
-            .send_message("Best foods".to_string(), "pizza is a good food".to_string())
-            .await
-            .unwrap();
-        producer
-            .send_message(
-                "Best drinks".to_string(),
-                "water is the only good drink".to_string(),
-            )
-            .await
-            .unwrap();
-        producer
-            .send_message(
-                "Best foods".to_string(),
-                "chicken is a good food".to_string(),
-            )
-            .await
-            .unwrap();
-        producer
-            .send_message(
-                "Best drinks".to_string(),
-                "milk is a good drink".to_string(),
-            )
-            .await
-            .unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_producer_consumer() {
-        // WOULD BE SPUN UP IN BACKGROUND FOR RUNNING KAFKA, NOT BY CLIENT
-        let lead_addr: ServerId = 8000;
-        run_kafka(lead_addr, 8080);
-
-        // How a client would make a producer
-        let mut producer = Producer::new(lead_addr).await;
-        producer.add_topic("Best foods".to_string()).await.unwrap();
-
-        let mut consumer = consumer::Consumer::new(8001, lead_addr);
-        consumer
-            .join_consumer_group("group".to_string())
-            .await
-            .unwrap();
-        let res = consumer.poll().await.unwrap();
-        for val in res {
-            assert_eq!(val, "".to_string());
-        }
-
-        producer
-            .send_message("Best foods".to_string(), "pizza is a good food".to_string())
-            .await
-            .unwrap();
-
-        let res = consumer.poll().await.unwrap();
-        for val in res {
-            assert_eq!(val, "".to_string());
-        }
-
-        consumer.subscribe("Best foods".to_string()).await.unwrap();
-        let res = consumer.poll().await.unwrap();
-        for val in res {
-            assert!(val == "pizza is a good food".to_string() || val == "".to_string());
-        }
+    consumer.subscribe("Best foods".to_string()).await.unwrap();
+    let res = consumer.poll().await.unwrap();
+    for val in res {
+        assert!(val == "pizza is a good food".to_string() || val == "".to_string());
     }
 }
