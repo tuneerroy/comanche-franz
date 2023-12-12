@@ -48,7 +48,7 @@ async fn main() {
     match service {
         Service::Broker => {
             // TODO: REMOVE THESE TEMPORARY VALUES AFTERWARDS
-            let addr: ServerId = 8080;
+            let addr: ServerId = 8001;
             // let addr: ServerId = read("Enter server addr: ");
 
             Broker::new(addr).listen().await;
@@ -60,14 +60,15 @@ async fn main() {
             // let addr: ServerId = read("Enter server addr: ");
             // let partition_count: usize = read("Enter number of partitions: ");
 
-            let mut broker_count: usize = read("Enter number of brokers: ");
-            while broker_count < 1 {
-                eprintln!("Invalid number of brokers.");
-                broker_count = read("Enter number of brokers: ");
-            }
-            let broker_ids = (0..broker_count)
-                .map(|_| read("Enter broker addr: "))
-                .collect();
+            let broker_ids = vec![8001];
+            // let mut broker_count: usize = read("Enter number of brokers: ");
+            // while broker_count < 1 {
+            //     eprintln!("Invalid number of brokers.");
+            //     broker_count = read("Enter number of brokers: ");
+            // }
+            // let broker_ids = (0..broker_count)
+            //     .map(|_| read("Enter broker addr: "))
+            //     .collect();
             BrokerLead::new(addr, broker_ids, partition_count)
                 .listen()
                 .await;
@@ -110,7 +111,7 @@ async fn main() {
 
             let mut consumer = consumer::Consumer::new(addr, broker_leader_addr);
             loop {
-                let action: usize = read("Enter action (0: subscribe, 1: unsubscribe, 2: join consumer group, 3: leave consumer group): ");
+                let action: usize = read("Enter action (0: subscribe, 1: unsubscribe, 2: join consumer group, 3: leave consumer group, 4: poll): ");
                 match action {
                     0 => {
                         let topic: String = read("Enter topic: ");

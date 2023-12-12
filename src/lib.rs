@@ -30,7 +30,6 @@ mod listeners {
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct ConsumerRequestsMessage {
         pub offset: usize,
-        pub size: usize,
     }
 
     /****************** FOR THE BROKER LEADER LISTENERS ******/
@@ -80,6 +79,25 @@ impl PartitionId {
 impl std::fmt::Display for PartitionId {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}-{}", self.topic, self.partition_num)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PartitionInfoWithOffset {
+    pub partition_info: PartitionInfo,
+    offset: usize,
+}
+
+impl PartitionInfoWithOffset {
+    pub fn new(partition_info: PartitionInfo, offset: usize) -> PartitionInfoWithOffset {
+        PartitionInfoWithOffset {
+            partition_info,
+            offset,
+        }
+    }
+
+    pub fn offset(&self) -> usize {
+        self.offset
     }
 }
 

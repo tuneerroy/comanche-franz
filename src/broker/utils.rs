@@ -35,14 +35,14 @@ impl Partition {
     }
 
     pub fn read(&mut self, offset: usize) -> String {
-        let res = if offset <= self.fileoffset {
+        let res = if offset < self.fileoffset {
             let mut file = std::fs::OpenOptions::new()
                 .read(true)
                 .open(&self.filename)
                 .unwrap();
             let mut buffer = String::new();
             file.read_to_string(&mut buffer).unwrap();
-            buffer[offset..].to_string()
+            buffer[offset + 1..].to_string()
         } else {
             String::new()
         };
@@ -50,9 +50,6 @@ impl Partition {
         res + &self.buffer
     }
 
-    // TODO: technically, we need to call this by a consumer
-    // and keep track of the offset for each consumer group for each partition/topic
-    #[allow(dead_code)]
     pub fn get_offset(&self) -> usize {
         self.fileoffset + self.buffer.len()
     }
