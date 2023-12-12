@@ -58,6 +58,8 @@ impl BrokerLead {
     }
 
     pub async fn listen(&mut self) {
+        eprintln!("Kafka cluster listening on {}!", self.addr);
+
         let producer_add_topic = warp::post()
             .and(warp::path("topics"))
             .and(warp::body::json())

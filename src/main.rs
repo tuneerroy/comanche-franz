@@ -48,13 +48,11 @@ async fn main() {
 
             let mut broker_lead =
                 comanche_franz::broker_lead::BrokerLead::new(addr, broker_count, partition_count);
-            eprintln!("Starting broker system...");
             broker_lead.listen().await;
         }
         Service::Producer => {
             let broker_leader_addr: ServerId = read("Enter broker leader addr: ");
-            let mut producer =
-                comanche_franz::producer::Producer::new(broker_leader_addr).await;
+            let mut producer = comanche_franz::producer::Producer::new(broker_leader_addr).await;
             loop {
                 let action: usize =
                     read("Enter action (0: add topic, 1: remove topic, 2: send message): ");

@@ -27,7 +27,8 @@ impl Partition {
                 .open(&self.filename)
                 .unwrap();
 
-            file.write_all(self.buffer[..BUFFER_SIZE / 2].as_bytes()).unwrap();
+            file.write_all(self.buffer[..BUFFER_SIZE / 2].as_bytes())
+                .unwrap();
             self.fileoffset += self.buffer[..BUFFER_SIZE / 2].len();
             self.buffer = self.buffer[BUFFER_SIZE / 2..].to_string();
         }

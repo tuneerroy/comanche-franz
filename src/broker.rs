@@ -24,6 +24,8 @@ impl Broker {
     }
 
     pub async fn listen(&mut self) {
+        eprintln!("Broker listening on port {}", self.addr);
+
         let producer_sends_message = warp::post()
             .and(warp::path!(String / "messages"))
             .and(warp::body::json())
