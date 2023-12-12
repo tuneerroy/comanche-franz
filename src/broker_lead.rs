@@ -79,6 +79,7 @@ impl BrokerLead {
                             &broker_partition_count,
                             partition_count,
                         );
+                        assert_eq!(broker_server_ids.len(), partition_count);
                         topic_to_partitions.insert(
                             topic.clone(),
                             broker_server_ids
