@@ -3,7 +3,6 @@ use std::collections::{HashMap, HashSet};
 use crate::{ConsumerInformation, PartitionInfo, ServerId, Topic};
 
 pub struct ConsumerGroup {
-    consumer_group_id: String,
     consumer_id_to_info: HashMap<ServerId, ConsumerInformation>,
     topics: HashSet<Topic>,
 }
@@ -11,9 +10,8 @@ pub struct ConsumerGroup {
 type TopicToPartitionInfo = HashMap<Topic, Vec<PartitionInfo>>;
 
 impl ConsumerGroup {
-    pub fn new(consumer_group_id: String) -> ConsumerGroup {
+    pub fn new() -> ConsumerGroup {
         ConsumerGroup {
-            consumer_group_id,
             consumer_id_to_info: HashMap::new(),
             topics: HashSet::new(),
         }

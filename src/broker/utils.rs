@@ -27,7 +27,7 @@ impl Partition {
                 .open(&self.filename)
                 .unwrap();
 
-            file.write_all(self.buffer[..BUFFER_SIZE / 2].as_bytes());
+            file.write_all(self.buffer[..BUFFER_SIZE / 2].as_bytes()).unwrap();
             self.fileoffset += self.buffer[..BUFFER_SIZE / 2].len();
             self.buffer = self.buffer[BUFFER_SIZE / 2..].to_string();
         }
@@ -40,7 +40,7 @@ impl Partition {
                 .open(&self.filename)
                 .unwrap();
             let mut buffer = String::new();
-            file.read_to_string(&mut buffer);
+            file.read_to_string(&mut buffer).unwrap();
             buffer[offset..].to_string()
         } else {
             String::new()
@@ -49,6 +49,9 @@ impl Partition {
         res + &self.buffer
     }
 
+    // TODO: technically, we need to call this by a consumer
+    // and keep track of the offset for each consumer group for each partition/topic
+    #[allow(dead_code)]
     pub fn get_offset(&self) -> usize {
         self.fileoffset + self.buffer.len()
     }

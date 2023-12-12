@@ -132,6 +132,7 @@ impl Consumer {
 
         let consumer_info = res.json::<ConsumerInformation>().await?;
         if consumer_info.has_received_change {
+            eprintln!("Received change: {:?}", consumer_info);
             self.partitions = consumer_info.partition_infos;
         }
 

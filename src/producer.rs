@@ -8,15 +8,13 @@ use crate::{
 mod utils;
 
 pub struct Producer {
-    addr: ServerId,
     broker_leader_addr: ServerId,
     topic_to_partitions: HashMap<Topic, Vec<PartitionInfo>>,
 }
 
 impl Producer {
-    pub async fn new(addr: ServerId, broker_leader_addr: ServerId) -> Producer {
+    pub async fn new(broker_leader_addr: ServerId) -> Producer {
         Producer {
-            addr,
             broker_leader_addr,
             topic_to_partitions: HashMap::new(),
         }
@@ -42,6 +40,19 @@ impl Producer {
 
         let partitions = res.json().await?;
         self.topic_to_partitions.insert(topic, partitions);
+
+        // print partitions
+        for (topic, partition_infos) in self.topic_to_partitions.iter() {
+            eprintln!("Topic: {}", topic);
+            for partition_info in partition_infos {
+                eprintln!(
+                    "  Partition: {} {}",
+                    partition_info.server_id(),
+                    partition_info.partition_id()
+                );
+            }
+        }
+
         Ok(())
     }
 

@@ -52,11 +52,9 @@ async fn main() {
             broker_lead.listen().await;
         }
         Service::Producer => {
-            let addr: ServerId = read("Enter server addr: ");
             let broker_leader_addr: ServerId = read("Enter broker leader addr: ");
-
             let mut producer =
-                comanche_franz::producer::Producer::new(addr, broker_leader_addr).await;
+                comanche_franz::producer::Producer::new(broker_leader_addr).await;
             loop {
                 let action: usize =
                     read("Enter action (0: add topic, 1: remove topic, 2: send message): ");
@@ -105,6 +103,10 @@ async fn main() {
                     }
                     3 => {
                         consumer.leave_consumer_group().await.unwrap();
+                    }
+                    4 => {
+                        let res = consumer.poll().await.unwrap();
+                        eprintln!("Received message: {:?}", res);
                     }
                     _ => {
                         eprintln!("Invalid action");

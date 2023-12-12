@@ -166,7 +166,7 @@ impl BrokerLead {
                     }
                     let consumer_group = consumer_group_id_to_groups
                         .entry(consumer_group_id.clone())
-                        .or_insert_with(|| ConsumerGroup::new(consumer_group_id));
+                        .or_insert_with(|| ConsumerGroup::new());
                     consumer_group.subscribe(&topic, &topic_to_partitions);
                     warp::reply::json(&"OK")
                 }
@@ -187,7 +187,7 @@ impl BrokerLead {
                     }
                     let consumer_group = consumer_group_id_to_groups
                         .entry(consumer_group_id.clone())
-                        .or_insert_with(|| ConsumerGroup::new(consumer_group_id));
+                        .or_insert_with(|| ConsumerGroup::new());
                     consumer_group.unsubscribe(&topic, &topic_to_partitions);
                     warp::reply::json(&"OK")
                 }
@@ -207,7 +207,7 @@ impl BrokerLead {
                         consumer_group_id_to_groups.lock().unwrap();
                     let consumer_group = consumer_group_id_to_groups
                         .entry(consumer_group_id.clone())
-                        .or_insert_with(|| ConsumerGroup::new(consumer_group_id));
+                        .or_insert_with(|| ConsumerGroup::new());
                     consumer_group.add_consumer(server_id, &topic_to_partitions);
                     warp::reply::json(&"OK")
                 }
@@ -225,7 +225,7 @@ impl BrokerLead {
                         consumer_group_id_to_groups.lock().unwrap();
                     let consumer_group = consumer_group_id_to_groups
                         .entry(consumer_group_id.clone())
-                        .or_insert_with(|| ConsumerGroup::new(consumer_group_id));
+                        .or_insert_with(|| ConsumerGroup::new());
                     consumer_group.remove_consumer(server_id, &topic_to_partitions);
                     warp::reply::json(&"OK")
                 }
@@ -241,7 +241,7 @@ impl BrokerLead {
                         consumer_group_id_to_groups.lock().unwrap();
                     let consumer_group = consumer_group_id_to_groups
                         .entry(consumer_group_id.clone())
-                        .or_insert_with(|| ConsumerGroup::new(consumer_group_id));
+                        .or_insert_with(|| ConsumerGroup::new());
                     let changes = consumer_group.get_changes(server_id);
                     warp::reply::json(&changes)
                 }
