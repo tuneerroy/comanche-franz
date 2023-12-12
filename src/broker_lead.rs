@@ -33,25 +33,26 @@ impl BrokerLead {
     pub fn new(addr: u16, broker_count: usize, partition_count: usize) -> BrokerLead {
         let broker_partition_count = Arc::new(Mutex::new(HashMap::new()));
         for i in 0..broker_count {
-            thread::spawn({
-                let broker_partition_count = broker_partition_count.clone();
+            let addr = addr + (i as u16) + 1;
+            broker_partition_count
+                .lock()
+                .unwrap()
+                .insert(addr, 0);
+
+            thread::spawn(
                 move || async move {
-                    let addr = addr + (i as u16) + 1;
-                    let mut broker = Broker::new(addr);
-                    broker_partition_count
-                        .lock()
-                        .unwrap()
-                        .insert(addr, partition_count);
-                    Broker::listen(&mut broker).await;
+                    // print partitions
+                    eprint!("WTF");
+                    Broker::new(addr).listen().await;
                 }
-            });
+            );
         }
 
         BrokerLead {
             addr,
             topic_to_partitions: Arc::new(Mutex::new(HashMap::new())),
             topic_to_producer_count: Arc::new(Mutex::new(HashMap::new())),
-            broker_partition_count: broker_partition_count.clone(),
+            broker_partition_count,
             consumer_group_id_to_groups: Arc::new(Mutex::new(HashMap::new())),
             partition_count,
         }

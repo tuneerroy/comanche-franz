@@ -42,16 +42,23 @@ async fn main() {
     };
     match service {
         Service::Cluster => {
-            let addr: ServerId = read("Enter server addr: ");
-            let broker_count: usize = read("Enter number of brokers: ");
-            let partition_count: usize = read("Enter number of partitions: ");
+            // TODO: REMOVE THESE TEMPORARY VALUES AFTERWARDS
+            let addr: ServerId = 8000;
+            let broker_count: usize = 3;
+            let partition_count: usize = 3;
+            // let addr: ServerId = read("Enter server addr: ");
+            // let broker_count: usize = read("Enter number of brokers: ");
+            // let partition_count: usize = read("Enter number of partitions: ");
 
             let mut broker_lead =
                 comanche_franz::broker_lead::BrokerLead::new(addr, broker_count, partition_count);
             broker_lead.listen().await;
         }
         Service::Producer => {
-            let broker_leader_addr: ServerId = read("Enter broker leader addr: ");
+            // TODO: REMOVE THESE TEMPORARY VALUES AFTERWARDS
+            let broker_leader_addr: ServerId = 8000;
+            // let broker_leader_addr: ServerId = read("Enter broker leader addr: ");
+            
             let mut producer = comanche_franz::producer::Producer::new(broker_leader_addr).await;
             loop {
                 let action: usize =
@@ -77,8 +84,11 @@ async fn main() {
             }
         }
         Service::Consumer => {
-            let addr: ServerId = read("Enter server addr: ");
-            let broker_leader_addr: ServerId = read("Enter broker leader addr: ");
+            // TODO: REMOVE THESE TEMPORARY VALUES AFTERWARDS
+            let addr: ServerId = 8080;
+            let broker_leader_addr: ServerId = 8000;
+            // let addr: ServerId = read("Enter server addr: ");
+            // let broker_leader_addr: ServerId = read("Enter broker leader addr: ");
 
             let mut consumer = consumer::Consumer::new(addr, broker_leader_addr);
             loop {
