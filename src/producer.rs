@@ -21,6 +21,7 @@ impl Producer {
 
     pub async fn add_topic(&mut self, topic: Topic) -> Result<(), reqwest::Error> {
         if self.topic_to_partitions.contains_key(&topic) {
+            eprintln!("Topic already exists.");
             return Ok(());
         }
 
@@ -40,6 +41,7 @@ impl Producer {
 
     pub async fn remove_topic(&mut self, topic: Topic) -> Result<(), reqwest::Error> {
         if !self.topic_to_partitions.contains_key(&topic) {
+            eprintln!("Topic does not exist.");
             return Ok(());
         }
 
@@ -57,6 +59,7 @@ impl Producer {
 
     pub async fn send_message(&mut self, topic: Topic, value: Value) -> Result<(), reqwest::Error> {
         if !self.topic_to_partitions.contains_key(&topic) {
+            eprintln!("Topic does not exist.");
             return Ok(());
         }
 

@@ -16,7 +16,7 @@ pub struct Consumer {
 }
 
 impl Consumer {
-    pub async fn new(addr: ServerId, broker_leader_addr: ServerId) -> Consumer {
+    pub fn new(addr: ServerId, broker_leader_addr: ServerId) -> Consumer {
         Consumer {
             addr,
             broker_leader_addr,
@@ -27,6 +27,7 @@ impl Consumer {
 
     pub async fn subscribe(&mut self, topic: Topic) -> Result<(), reqwest::Error> {
         if self.consumer_group_id.is_none() {
+            eprintln!("Not in consumer group.");
             return Ok(());
         }
 
@@ -45,6 +46,7 @@ impl Consumer {
 
     pub async fn unsubscribe(&mut self, topic: Topic) -> Result<(), reqwest::Error> {
         if self.consumer_group_id.is_none() {
+            eprintln!("Not in consumer group.");
             return Ok(());
         }
 
@@ -66,6 +68,7 @@ impl Consumer {
         consumer_group_id: ConsumerGroupId,
     ) -> Result<(), reqwest::Error> {
         if self.consumer_group_id.is_some() {
+            eprintln!("Already in consumer group.");
             return Ok(());
         }
 
@@ -84,6 +87,7 @@ impl Consumer {
 
     pub async fn leave_consumer_group(&mut self) -> Result<(), reqwest::Error> {
         if self.consumer_group_id.is_none() {
+            eprintln!("Not in consumer group.");
             return Ok(());
         }
 
@@ -102,6 +106,7 @@ impl Consumer {
 
     pub async fn poll(&mut self) -> Result<Vec<Value>, reqwest::Error> {
         if self.consumer_group_id.is_none() {
+            eprintln!("Not in consumer group.");
             return Ok(Vec::new());
         }
 

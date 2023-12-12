@@ -1,9 +1,32 @@
-use comanche_franz::consumer;
+use std::io::Write;
+
+use comanche_franz::{consumer, ServerId};
+
+// TODO: make this more modular, and much cleaner
 
 enum Service {
-    Broker,
+    Cluster,
     Producer,
     Consumer,
+}
+
+fn read_number<T: std::str::FromStr>(message: &str) -> T {
+    print!("{}", message);
+    std::io::stdout().flush().unwrap();
+    
+    let mut input = String::new();
+    loop {
+        std::io::stdin().read_line(&mut input).unwrap();
+        match input.trim().parse::<T>() {
+            Ok(n) => {
+                return n;
+            }
+            Err(_) => {
+                eprintln!("Invalid number");
+                eprint!("{}", message);
+            }
+        }
+    }
 }
 
 #[tokio::main]
@@ -13,39 +36,75 @@ async fn main() {
         panic!("Invalid number of arguments");
     }
     let service = match args[1].as_str() {
-        "broker" => Service::Broker,
+        "cluster" => Service::Cluster,
         "producer" => Service::Producer,
         "consumer" => Service::Consumer,
         _ => panic!("Invalid service"),
     };
-
-    // start service
     match service {
-        Service::Broker => {
-            let addr = args[2].parse::<u16>().unwrap();
-            let mut broker = comanche_franz::broker::Broker::new(addr);
-            broker.listen().await;
+        Service::Cluster => {
+            let addr: ServerId = read_number("Enter server addr: ");
+            let broker_count: usize = read_number("Enter number of brokers: ");
+            let partition_count: usize = read_number("Enter number of partitions: ");
+
+            let mut broker_lead = comanche_franz::broker_lead::BrokerLead::new(addr, broker_count, partition_count);
+            eprintln!("Starting broker system...");
+            broker_lead.listen().await;
         }
         Service::Producer => {
-            let addr = 8000;
-            let broker_leader_addr = args[2].parse::<u16>().unwrap();
+            let addr: ServerId = read_number("Enter server addr: ");
+            let broker_leader_addr: ServerId = read_number("Enter broker leader addr: ");
+
             let mut producer = comanche_franz::producer::Producer::new(addr, broker_leader_addr).await;
-            producer.add_topic("test".to_string()).await.unwrap();
             loop {
-                producer.send_message("test".to_string(), "hello".to_string()).await.unwrap();
-                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                let action: usize = read_number("Enter action (0: add topic, 1: remove topic, 2: send message): ");
+                match action {
+                    0 => {
+                        let topic: String = read_number("Enter topic: ");
+                        producer.add_topic(topic).await.unwrap();
+                    }
+                    1 => {
+                        let topic: String = read_number("Enter topic: ");
+                        producer.remove_topic(topic).await.unwrap();
+                    }
+                    2 => {
+                        let topic: String = read_number("Enter topic: ");
+                        let value: String = read_number("Enter value: ");
+                        producer.send_message(topic, value).await.unwrap();
+                    }
+                    _ => {
+                        eprintln!("Invalid action");
+                    }
+                }
             }
         }
         Service::Consumer => {
-            let addr = args[2].parse::<u16>().unwrap();
-            let broker_leader_addr = args[3].parse::<u16>().unwrap();
-            let mut consumer = consumer::Consumer::new(addr, broker_leader_addr).await;
-            consumer.join_consumer_group("group".to_string()).await.unwrap();
-            consumer.subscribe("test".to_string()).await.unwrap();
+            let addr: ServerId = read_number("Enter server addr: ");
+            let broker_leader_addr: ServerId = read_number("Enter broker leader addr: ");
+
+            let mut consumer = consumer::Consumer::new(addr, broker_leader_addr);
             loop {
-                let messages = consumer.poll().await.unwrap();
-                println!("Consumer received messages: {:?}", messages);
-                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                let action: usize = read_number("Enter action (0: subscribe, 1: unsubscribe, 2: join consumer group, 3: leave consumer group): ");
+                match action {
+                    0 => {
+                        let topic: String = read_number("Enter topic: ");
+                        consumer.subscribe(topic).await.unwrap();
+                    }
+                    1 => {
+                        let topic: String = read_number("Enter topic: ");
+                        consumer.unsubscribe(topic).await.unwrap();
+                    }
+                    2 => {
+                        let consumer_group_id: String = read_number("Enter consumer group id: ");
+                        consumer.join_consumer_group(consumer_group_id).await.unwrap();
+                    }
+                    3 => {
+                        consumer.leave_consumer_group().await.unwrap();
+                    }
+                    _ => {
+                        eprintln!("Invalid action");
+                    }
+                }
             }
         }
     }

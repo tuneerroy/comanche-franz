@@ -37,7 +37,7 @@ impl Broker {
                         .entry(partition_id.clone())
                         .or_insert_with(|| Partition::new(partition_id.to_string().clone()));
                     partition.append(&message.value);
-                    println!("Broker received producer message: {:?}", message);
+                    eprintln!("Broker received producer message: {:?}", message);
                     warp::reply::reply()
                 }
             });
@@ -54,7 +54,7 @@ impl Broker {
                         .entry(partition_id.clone())
                         .or_insert_with(|| Partition::new(partition_id.to_string().clone()));
                     let contents = partition.read(message.offset);
-                    println!("Broker received consumer request: {:?}", message);
+                    eprintln!("Broker received consumer request: {:?}", message);
                     warp::reply::json(&contents)
                 }
             });

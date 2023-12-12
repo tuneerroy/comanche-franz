@@ -14,6 +14,9 @@ pub mod consumer;
 pub mod consumer_group;
 pub mod producer;
 
+// TODO: most of this should be in a utils file, not here
+// really should just be importigna and re-exposing certain things
+
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct PartitionId {
     topic: Topic,
