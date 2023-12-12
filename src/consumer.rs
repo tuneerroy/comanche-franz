@@ -164,7 +164,7 @@ impl Consumer {
                     new_partitions.push(PartitionInfoWithOffset::new(partition_info, offset));
                 }
             }
-            
+
             // print out new partitions
             eprintln!("New partitions: {:?}", new_partitions);
             self.partitions = new_partitions;
