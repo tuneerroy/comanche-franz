@@ -1,5 +1,3 @@
-use serde::{Deserialize, Serialize};
-
 use crate::{
     listeners::{ConsumerAddGroup, ConsumerSubscribes, ConsumerRequestsMessage},
     ConsumerGroupId, ConsumerInformation, PartitionInfo, ServerId, Topic, Value,
