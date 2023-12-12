@@ -113,7 +113,7 @@ impl BrokerLead {
                         .or_insert(1);
 
                     let reply: Vec<PartitionInfo> = topic_to_partitions[&topic].clone();
-                    warp::reply::json(&reply);
+                    warp::reply::json(&reply)
                 }
             });
 
