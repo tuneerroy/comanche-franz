@@ -83,6 +83,25 @@ impl std::fmt::Display for PartitionId {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PartitionInfoWithOffset {
+    pub partition_info: PartitionInfo,
+    offset: usize,
+}
+
+impl PartitionInfoWithOffset {
+    pub fn new(partition_info: PartitionInfo, offset: usize) -> PartitionInfoWithOffset {
+        PartitionInfoWithOffset {
+            partition_info,
+            offset,
+        }
+    }
+
+    pub fn offset(&self) -> usize {
+        self.offset
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PartitionInfo {
     partition_id: PartitionId,
     server_id: ServerId,

@@ -50,9 +50,6 @@ impl Partition {
         res + &self.buffer
     }
 
-    // TODO: technically, we need to call this by a consumer
-    // and keep track of the offset for each consumer group for each partition/topic
-    #[allow(dead_code)]
     pub fn get_offset(&self) -> usize {
         self.fileoffset + self.buffer.len()
     }

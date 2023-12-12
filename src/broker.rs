@@ -62,7 +62,22 @@ impl Broker {
                 }
             });
 
-        warp::serve(producer_sends_message.or(consumer_requests_message))
+        let consumer_get_offset = warp::get()
+            .and(warp::path!(String / "offset"))
+            .map({
+                let partitions = self.partitions.clone();
+                move |partition_id: String| {
+                    eprintln!("Broker received consumer request for offset");
+                    let partition_id = PartitionId::from_str(&partition_id);
+                    let partitions = partitions.lock().unwrap();
+                    let partition = partitions.get(&partition_id).unwrap();
+                    let offset = partition.get_offset();
+                    eprintln!("Broker received consumer request for offset");
+                    warp::reply::json(&offset)
+                }
+            });
+
+        warp::serve(producer_sends_message.or(consumer_requests_message).or(consumer_get_offset))
             .run(([127, 0, 0, 1], self.addr))
             .await;
     }
