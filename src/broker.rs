@@ -4,7 +4,7 @@ use std::{
 };
 use warp::Filter;
 
-use crate::{listeners, PartitionId, ServerId};
+use crate::{listeners, PartitionId, ServerId, ConsumerResponse};
 
 use self::utils::Partition;
 
@@ -56,9 +56,13 @@ impl Broker {
                     let partition = partitions
                         .entry(partition_id.clone())
                         .or_insert_with(|| Partition::new(partition_id.to_string().clone()));
-                    let contents = partition.read(message.offset);
+                    let content = partition.read(message.offset);
+                    let response: ConsumerResponse = ConsumerResponse {
+                        value: content,
+                        new_offset: partition.get_offset(),
+                    };
                     eprintln!("Broker received consumer request: {:?}", message);
-                    warp::reply::json(&contents)
+                    warp::reply::json(&response)
                 }
             });
 

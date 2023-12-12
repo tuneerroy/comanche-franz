@@ -129,3 +129,9 @@ pub struct ConsumerInformation {
     pub partition_infos: Vec<PartitionInfo>,
     pub has_received_change: bool,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConsumerResponse {
+    pub value: Value,
+    pub new_offset: usize,
+}

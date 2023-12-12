@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     listeners::{ConsumerAddGroup, ConsumerSubscribes, ConsumerRequestsMessage},
-    ConsumerGroupId, ConsumerInformation, ServerId, Topic, Value, PartitionInfoWithOffset, PartitionInfo,
+    ConsumerGroupId, ConsumerInformation, ServerId, Topic, Value, PartitionInfoWithOffset, PartitionInfo, ConsumerResponse,
 };
 
 pub struct Consumer {
@@ -160,7 +160,7 @@ impl Consumer {
         }
 
         let mut all_values = Vec::new();
-        for partition_info_with_offset in self.partitions.iter() {
+        for partition_info_with_offset in self.partitions.iter_mut() {
             let msg: ConsumerRequestsMessage = ConsumerRequestsMessage { offset: partition_info_with_offset.offset() };
             let partition_info = &partition_info_with_offset.partition_info;
             let res = reqwest::Client::new()
@@ -172,9 +172,11 @@ impl Consumer {
                 .json(&msg)
                 .send()
                 .await?;
-            all_values.push(res.json::<Value>().await?);
+            let res: ConsumerResponse = res.json::<ConsumerResponse>().await?;
+            all_values.push(res.value);
+            partition_info_with_offset.offset = res.new_offset;            
         }
-
+        
         Ok(all_values)
     }
 }
