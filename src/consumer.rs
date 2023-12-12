@@ -1,15 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    listeners::{ConsumerAddGroup, ConsumerSubscribes},
+    listeners::{ConsumerAddGroup, ConsumerSubscribes, ConsumerRequestsMessage},
     ConsumerGroupId, ConsumerInformation, PartitionInfo, ServerId, Topic, Value,
 };
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct ConsumerRequestsMessage {
-    pub offset: usize,
-    pub size: usize,
-}
 
 pub struct Consumer {
     addr: ServerId,
@@ -37,7 +31,7 @@ impl Consumer {
         let message = ConsumerSubscribes { topic };
         reqwest::Client::new()
             .post(format!(
-                "http://127.0.0.1:{}/{}/topics",
+                "http://127.0.0.1:{}/groups/{}/topics",
                 self.broker_leader_addr,
                 self.consumer_group_id.as_ref().unwrap()
             ))
@@ -56,7 +50,7 @@ impl Consumer {
 
         reqwest::Client::new()
             .delete(format!(
-                "http://127.0.0.1:{}/{}/topics/{}",
+                "http://127.0.0.1:{}/groups/{}/topics/{}",
                 self.broker_leader_addr,
                 self.consumer_group_id.as_ref().unwrap(),
                 topic
@@ -82,7 +76,7 @@ impl Consumer {
 
         reqwest::Client::new()
             .post(format!(
-                "http://127.0.0.1:{}/{}/consumers",
+                "http://127.0.0.1:{}/groups/{}/consumers",
                 self.broker_leader_addr, consumer_group_id
             ))
             .json(&message)
@@ -101,7 +95,7 @@ impl Consumer {
 
         reqwest::Client::new()
             .delete(format!(
-                "http://127.0.0.1:{}/{}/consumers/{}",
+                "http://127.0.0.1:{}/groups/{}/consumers/{}",
                 self.broker_leader_addr,
                 self.consumer_group_id.as_ref().unwrap(),
                 self.addr
@@ -122,7 +116,7 @@ impl Consumer {
         // first check if any changes to partitions
         let res = reqwest::Client::new()
             .get(format!(
-                "http://127.0.0.1:{}/{}/consumers/{}",
+                "http://127.0.0.1:{}/groups/{}/consumers/{}",
                 self.broker_leader_addr,
                 self.consumer_group_id.as_ref().unwrap(),
                 self.addr
@@ -138,7 +132,7 @@ impl Consumer {
 
         let mut all_values = Vec::new();
         for partition_info in self.partitions.iter() {
-            let msg: ConsumerRequestsMessage = ConsumerRequestsMessage { offset: 0, size: 1 };
+            let msg: ConsumerRequestsMessage = ConsumerRequestsMessage { offset: 0 };
             let res = reqwest::Client::new()
                 .get(format!(
                     "http://127.0.0.1:{}/{}/messages",
@@ -148,9 +142,7 @@ impl Consumer {
                 .json(&msg)
                 .send()
                 .await?;
-
-            let values = res.json::<Vec<Value>>().await?;
-            all_values.extend(values);
+            all_values.push(res.json::<Value>().await?);
         }
 
         Ok(all_values)

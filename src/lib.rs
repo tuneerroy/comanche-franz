@@ -30,7 +30,6 @@ mod listeners {
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct ConsumerRequestsMessage {
         pub offset: usize,
-        pub size: usize,
     }
 
     /****************** FOR THE BROKER LEADER LISTENERS ******/

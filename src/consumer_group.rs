@@ -47,11 +47,17 @@ impl ConsumerGroup {
 
     pub fn subscribe(&mut self, topic: &Topic, map: &TopicToPartitionInfo) {
         self.topics.insert(topic.clone());
+
+        eprintln!("after add, topics subscribed to: {:?}", self.topics);
+
         self.reorganize_partitions(map);
     }
 
     pub fn unsubscribe(&mut self, topic: &Topic, map: &TopicToPartitionInfo) {
         self.topics.remove(topic);
+
+        eprintln!("after remove, topics subscribed to: {:?}", self.topics);
+
         self.reorganize_partitions(map);
     }
 

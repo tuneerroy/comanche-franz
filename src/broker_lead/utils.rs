@@ -6,7 +6,7 @@ pub fn get_brokers_with_least_partitions(
     broker_partition_count: &MutexGuard<HashMap<ServerId, usize>>,
     partition_count: usize,
 ) -> Vec<ServerId> {
-    let mut min_heap = std::collections::BinaryHeap::new();
+    let mut min_hweap = std::collections::BinaryHeap::new();
     eprintln!("broker_partition_count: {:?}", broker_partition_count);
     eprintln!("partition_count: {:?}", partition_count);
     for (broker, count) in broker_partition_count.iter() {

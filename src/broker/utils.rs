@@ -35,14 +35,14 @@ impl Partition {
     }
 
     pub fn read(&mut self, offset: usize) -> String {
-        let res = if offset <= self.fileoffset {
+        let res = if offset < self.fileoffset {
             let mut file = std::fs::OpenOptions::new()
                 .read(true)
                 .open(&self.filename)
                 .unwrap();
             let mut buffer = String::new();
             file.read_to_string(&mut buffer).unwrap();
-            buffer[offset..].to_string()
+            buffer[offset + 1..].to_string()
         } else {
             String::new()
         };
