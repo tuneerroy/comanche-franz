@@ -118,7 +118,7 @@ impl Consumer {
             .send()
             .await?;
 
-        Ok(res.json::<usize>().await?)
+        res.json::<usize>().await
     }
 
     pub async fn poll(&mut self) -> Result<Vec<Value>, reqwest::Error> {

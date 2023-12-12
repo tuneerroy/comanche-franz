@@ -236,7 +236,7 @@ mod tests {
         consumer.subscribe("Best foods".to_string()).await.unwrap();
         let res = consumer.poll().await.unwrap();
         for val in res {
-            assert!(val == "pizza is a good food".to_string() || val == "".to_string());
+            assert!(val == *"pizza is a good food" || val == *"");
         }
     }
 }
