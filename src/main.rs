@@ -166,7 +166,7 @@ async fn test_producer() {
 
     // How a client would make a producer
 
-    let mut producer = Producer::new(lead_addr).await;
+    let mut producer = Producer::new(lead_addr);
     producer.add_topic("Best foods".to_string()).await.unwrap();
     producer
         .send_message("Best foods".to_string(), "pizza is a good food".to_string())
@@ -180,7 +180,7 @@ async fn test_multiple_topics() {
     let _ = run_kafka(lead_addr, 8001);
 
     // How a client would make a producer
-    let mut producer = Producer::new(lead_addr).await;
+    let mut producer = Producer::new(lead_addr);
     producer.add_topic("Best foods".to_string()).await.unwrap();
     producer.add_topic("Best drinks".to_string()).await.unwrap();
     producer
@@ -216,7 +216,7 @@ async fn test_producer_consumer() {
     let _ = run_kafka(lead_addr, 8001);
 
     // How a client would make a producer
-    let mut producer = Producer::new(lead_addr).await;
+    let mut producer = Producer::new(lead_addr);
     producer.add_topic("Best foods".to_string()).await.unwrap();
 
     let mut consumer = consumer::Consumer::new(8080, lead_addr);
