@@ -16,6 +16,34 @@ pub mod producer;
 
 // TODO: most of this should be in a utils file, not here
 // really should just be importigna and re-exposing certain things
+mod listeners {
+/****************** FOR THE BROKER LISTENERS ******/
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct ProducerSendsMessage {
+        pub value: String,
+    }
+
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct ConsumerRequestsMessage {
+        pub offset: usize,
+        pub size: usize,
+    }
+
+    /****************** FOR THE BROKER LEADER LISTENERS ******/
+
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct ProducerAddsTopic {
+        topic: String,
+    }
+
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct ConsumerSubscribes {
+        topic: String,
+    }
+}
+/****************** FOR OTHER STUFF ******/
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct PartitionId {

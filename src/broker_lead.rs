@@ -65,6 +65,7 @@ impl BrokerLead {
                 let broker_partition_count = self.broker_partition_count.clone();
                 let partition_count = self.partition_count;
                 move |topic: Topic| {
+                    eprintln!("BrokerLead received producer add topic: {:?}", topic);
                     let mut topic_to_partitions = topic_to_partitions.lock().unwrap();
                     let mut topic_to_producer_count = topic_to_producer_count.lock().unwrap();
                     let mut broker_partition_count = broker_partition_count.lock().unwrap();
@@ -106,6 +107,7 @@ impl BrokerLead {
             let topic_to_producer_count = self.topic_to_producer_count.clone();
             let broker_partition_count = self.broker_partition_count.clone();
             move |topic: String| {
+                eprintln!("BrokerLead received producer remove topic: {:?}", topic);
                 let mut topic_to_partitions = topic_to_partitions.lock().unwrap();
                 let mut topic_to_producer_count = topic_to_producer_count.lock().unwrap();
                 let mut broker_partition_count = broker_partition_count.lock().unwrap();
@@ -140,6 +142,7 @@ impl BrokerLead {
                 let topic_to_partitions = self.topic_to_partitions.clone();
                 let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
                 move |consumer_group_id: ConsumerGroupId, topic: Topic| {
+                    eprintln!("BrokerLead received consumer subscribe: {:?}", topic);
                     let topic_to_partitions = topic_to_partitions.lock().unwrap();
                     let mut consumer_group_id_to_groups =
                         consumer_group_id_to_groups.lock().unwrap();
@@ -160,6 +163,7 @@ impl BrokerLead {
                 let topic_to_partitions = self.topic_to_partitions.clone();
                 let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
                 move |consumer_group_id: ConsumerGroupId, topic: Topic| {
+                    eprintln!("BrokerLead received consumer unsubscribe: {:?}", topic);
                     let topic_to_partitions = topic_to_partitions.lock().unwrap();
                     let mut consumer_group_id_to_groups =
                         consumer_group_id_to_groups.lock().unwrap();
@@ -180,6 +184,7 @@ impl BrokerLead {
                 let topic_to_partitions = self.topic_to_partitions.clone();
                 let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
                 move |consumer_group_id: ConsumerGroupId, server_id: ServerId| {
+                    eprintln!("BrokerLead received consumer add group: {:?}", server_id);
                     let topic_to_partitions = topic_to_partitions.lock().unwrap();
                     let mut consumer_group_id_to_groups =
                         consumer_group_id_to_groups.lock().unwrap();
@@ -197,6 +202,7 @@ impl BrokerLead {
                 let topic_to_partitions = self.topic_to_partitions.clone();
                 let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
                 move |consumer_group_id: ConsumerGroupId, server_id: ServerId| {
+                    eprintln!("BrokerLead received consumer remove group: {:?}", server_id);
                     let topic_to_partitions = topic_to_partitions.lock().unwrap();
                     let mut consumer_group_id_to_groups =
                         consumer_group_id_to_groups.lock().unwrap();
@@ -213,6 +219,7 @@ impl BrokerLead {
             .map({
                 let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
                 move |consumer_group_id: ConsumerGroupId, server_id: ServerId| {
+                    eprintln!("BrokerLead received consumer check group: {:?}", server_id);
                     let mut consumer_group_id_to_groups =
                         consumer_group_id_to_groups.lock().unwrap();
                     let consumer_group = consumer_group_id_to_groups

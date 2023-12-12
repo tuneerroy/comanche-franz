@@ -4,11 +4,10 @@ use std::{
 };
 use warp::Filter;
 
-use crate::{PartitionId, ServerId};
+use crate::{PartitionId, ServerId, listeners};
 
 use self::utils::Partition;
 
-mod listeners;
 mod utils;
 
 pub struct Broker {
@@ -31,6 +30,7 @@ impl Broker {
             .map({
                 let partitions = self.partitions.clone();
                 move |partition_id: String, message: listeners::ProducerSendsMessage| {
+                    eprintln!("Broker received producer message: {:?}", message);
                     let partition_id = PartitionId::from_str(&partition_id);
                     let mut partitions = partitions.lock().unwrap();
                     let partition = partitions
@@ -48,6 +48,7 @@ impl Broker {
             .map({
                 let partitions = self.partitions.clone();
                 move |partition_id: String, message: listeners::ConsumerRequestsMessage| {
+                    eprintln!("Broker received consumer request: {:?}", message);
                     let partition_id = PartitionId::from_str(&partition_id);
                     let mut partitions = partitions.lock().unwrap();
                     let partition = partitions
