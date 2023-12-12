@@ -20,9 +20,11 @@ mod listeners {
 /****************** FOR THE BROKER LISTENERS ******/
     use serde::{Deserialize, Serialize};
 
+    use crate::{Topic, Value, ServerId};
+
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct ProducerSendsMessage {
-        pub value: String,
+        pub value: Value,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -35,12 +37,17 @@ mod listeners {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct ProducerAddsTopic {
-        topic: String,
+        pub topic: Topic,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct ConsumerSubscribes {
-        topic: String,
+        pub topic: Topic,
+    }
+
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct ConsumerAddGroup { 
+        pub consumer_id: ServerId,
     }
 }
 /****************** FOR OTHER STUFF ******/

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{PartitionInfo, ServerId, Topic, Value};
+use crate::{PartitionInfo, ServerId, Topic, Value, listeners::{ProducerAddsTopic, self}};
 
 mod utils;
 
@@ -25,12 +25,13 @@ impl Producer {
             return Ok(());
         }
 
+        let message: ProducerAddsTopic = ProducerAddsTopic { topic: topic.clone() };
         let res = reqwest::Client::new()
             .post(format!(
-                "http://localhost:{}/topics",
+                "http://127.0.0.1:{}/topics",
                 self.broker_leader_addr
             ))
-            .json(&topic)
+            .json(&message)
             .send()
             .await?;
 
@@ -47,7 +48,7 @@ impl Producer {
 
         reqwest::Client::new()
             .delete(format!(
-                "http://localhost:{}/topics/{}",
+                "http://127.0.0.1:{}/topics/{}",
                 self.broker_leader_addr, topic
             ))
             .send()
@@ -67,13 +68,15 @@ impl Producer {
         let i = utils::hash_value_to_range(&value, partition_infos.len());
         let partition_info = &partition_infos[i];
 
+        let message = listeners::ProducerSendsMessage { value };
+
         reqwest::Client::new()
             .post(format!(
                 "http://localhost:{}/{}/messages",
                 partition_info.server_id(),
                 partition_info.partition_id(),
             ))
-            .json(&value)
+            .json(&message)
             .send()
             .await?;
 

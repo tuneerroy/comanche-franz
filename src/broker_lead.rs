@@ -8,7 +8,7 @@ use warp::Filter;
 
 use crate::{
     broker::Broker, consumer_group::ConsumerGroup, ConsumerGroupId, PartitionId, PartitionInfo,
-    ServerId, Topic,
+    ServerId, Topic, listeners::{ProducerAddsTopic, ConsumerAddGroup},
 };
 
 mod utils;
@@ -64,7 +64,8 @@ impl BrokerLead {
                 let topic_to_producer_count = self.topic_to_producer_count.clone();
                 let broker_partition_count = self.broker_partition_count.clone();
                 let partition_count = self.partition_count;
-                move |topic: Topic| {
+                move |message: ProducerAddsTopic| {
+                    let topic = message.topic;
                     eprintln!("BrokerLead received producer add topic: {:?}", topic);
                     let mut topic_to_partitions = topic_to_partitions.lock().unwrap();
                     let mut topic_to_producer_count = topic_to_producer_count.lock().unwrap();
@@ -179,11 +180,13 @@ impl BrokerLead {
             });
 
         let consumer_add_group = warp::post()
-            .and(warp::path!(ConsumerGroupId / "consumers" / ServerId))
+            .and(warp::path!(ConsumerGroupId / "consumers"))
+            .and(warp::body::json())
             .map({
                 let topic_to_partitions = self.topic_to_partitions.clone();
                 let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
-                move |consumer_group_id: ConsumerGroupId, server_id: ServerId| {
+                move |consumer_group_id: ConsumerGroupId, body: ConsumerAddGroup| {
+                    let server_id = body.consumer_id;
                     eprintln!("BrokerLead received consumer add group: {:?}", server_id);
                     let topic_to_partitions = topic_to_partitions.lock().unwrap();
                     let mut consumer_group_id_to_groups =

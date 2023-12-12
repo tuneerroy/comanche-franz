@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{ConsumerGroupId, ConsumerInformation, PartitionInfo, ServerId, Topic, Value};
+use crate::{ConsumerGroupId, ConsumerInformation, PartitionInfo, ServerId, Topic, Value, listeners::{ConsumerSubscribes, ConsumerAddGroup}};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ConsumerRequestsMessage {
@@ -31,13 +31,14 @@ impl Consumer {
             return Ok(());
         }
 
+        let message = ConsumerSubscribes { topic };
         reqwest::Client::new()
             .post(format!(
                 "http://localhost:{}/{}/topics",
                 self.broker_leader_addr,
                 self.consumer_group_id.as_ref().unwrap()
             ))
-            .json(&topic)
+            .json(&message)
             .send()
             .await?;
 
@@ -72,12 +73,17 @@ impl Consumer {
             return Ok(());
         }
 
+        let message = ConsumerAddGroup {
+            consumer_id: self.addr,
+        };
+
         reqwest::Client::new()
             .post(format!(
-                "http://localhost:{}/consumer-groups",
-                self.broker_leader_addr
+                "http://localhost:{}/{}/consumers",
+                self.broker_leader_addr,
+                consumer_group_id
             ))
-            .json(&consumer_group_id)
+            .json(&message)
             .send()
             .await?;
 
@@ -93,9 +99,10 @@ impl Consumer {
 
         reqwest::Client::new()
             .delete(format!(
-                "http://localhost:{}/consumer-groups/{}",
+                "http://localhost:{}/{}/consumers/{}",
                 self.broker_leader_addr,
-                self.consumer_group_id.as_ref().unwrap()
+                self.consumer_group_id.as_ref().unwrap(),
+                self.addr
             ))
             .send()
             .await?;
