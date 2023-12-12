@@ -73,8 +73,10 @@ impl Broker {
                 move |partition_id: String| {
                     eprintln!("Broker received consumer request for offset");
                     let partition_id = PartitionId::from_str(&partition_id);
-                    let partitions = partitions.lock().unwrap();
-                    let partition = partitions.get(&partition_id).unwrap();
+                    let mut partitions = partitions.lock().unwrap();
+                    let partition = partitions
+                        .entry(partition_id.clone())
+                        .or_insert_with(|| Partition::new(partition_id.to_string().clone()));
                     let offset = partition.get_offset();
                     eprintln!("Broker received consumer request for offset");
                     warp::reply::json(&offset)
