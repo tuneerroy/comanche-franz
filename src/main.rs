@@ -178,7 +178,10 @@ mod tests {
         // How a client would make a producer
         let mut producer = Producer::new(lead_addr).await;
         producer.add_topic("Best foods".to_string()).await.unwrap();
-        producer.send_message("Best foods".to_string(), "pizza is a good food".to_string()).await.unwrap();
+        producer
+            .send_message("Best foods".to_string(), "pizza is a good food".to_string())
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
@@ -191,10 +194,31 @@ mod tests {
         let mut producer = Producer::new(lead_addr).await;
         producer.add_topic("Best foods".to_string()).await.unwrap();
         producer.add_topic("Best drinks".to_string()).await.unwrap();
-        producer.send_message("Best foods".to_string(), "pizza is a good food".to_string()).await.unwrap();
-        producer.send_message("Best drinks".to_string(), "water is the only good drink".to_string()).await.unwrap();
-        producer.send_message("Best foods".to_string(), "chicken is a good food".to_string()).await.unwrap();
-        producer.send_message("Best drinks".to_string(), "milk is a good drink".to_string()).await.unwrap();
+        producer
+            .send_message("Best foods".to_string(), "pizza is a good food".to_string())
+            .await
+            .unwrap();
+        producer
+            .send_message(
+                "Best drinks".to_string(),
+                "water is the only good drink".to_string(),
+            )
+            .await
+            .unwrap();
+        producer
+            .send_message(
+                "Best foods".to_string(),
+                "chicken is a good food".to_string(),
+            )
+            .await
+            .unwrap();
+        producer
+            .send_message(
+                "Best drinks".to_string(),
+                "milk is a good drink".to_string(),
+            )
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
@@ -207,7 +231,6 @@ mod tests {
         let mut producer = Producer::new(lead_addr).await;
         producer.add_topic("Best foods".to_string()).await.unwrap();
 
-
         let mut consumer = consumer::Consumer::new(8001, lead_addr);
         consumer
             .join_consumer_group("group".to_string())
@@ -218,7 +241,10 @@ mod tests {
             assert_eq!(val, "".to_string());
         }
 
-        producer.send_message("Best foods".to_string(), "pizza is a good food".to_string()).await.unwrap();
+        producer
+            .send_message("Best foods".to_string(), "pizza is a good food".to_string())
+            .await
+            .unwrap();
 
         let res = consumer.poll().await.unwrap();
         for val in res {

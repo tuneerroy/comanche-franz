@@ -37,7 +37,7 @@ impl Partition {
     }
 
     pub fn read(&mut self, offset: usize) -> String {
-       if offset < self.fileoffset {
+        if offset < self.fileoffset {
             let filename = FILE_PATH.to_string() + &self.filename;
             let mut file = std::fs::OpenOptions::new()
                 .read(true)

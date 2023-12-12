@@ -4,7 +4,7 @@ use std::{
 };
 use warp::Filter;
 
-use crate::{listeners, PartitionId, ServerId, ConsumerResponse};
+use crate::{listeners, ConsumerResponse, PartitionId, ServerId};
 
 use self::utils::Partition;
 
@@ -66,25 +66,27 @@ impl Broker {
                 }
             });
 
-        let consumer_get_offset = warp::get()
-            .and(warp::path!(String / "offset"))
-            .map({
-                let partitions = self.partitions.clone();
-                move |partition_id: String| {
-                    eprintln!("Broker received consumer request for offset");
-                    let partition_id = PartitionId::from_str(&partition_id);
-                    let mut partitions = partitions.lock().unwrap();
-                    let partition = partitions
-                        .entry(partition_id.clone())
-                        .or_insert_with(|| Partition::new(partition_id.to_string().clone()));
-                    let offset = partition.get_offset();
-                    eprintln!("Broker received consumer request for offset");
-                    warp::reply::json(&offset)
-                }
-            });
+        let consumer_get_offset = warp::get().and(warp::path!(String / "offset")).map({
+            let partitions = self.partitions.clone();
+            move |partition_id: String| {
+                eprintln!("Broker received consumer request for offset");
+                let partition_id = PartitionId::from_str(&partition_id);
+                let mut partitions = partitions.lock().unwrap();
+                let partition = partitions
+                    .entry(partition_id.clone())
+                    .or_insert_with(|| Partition::new(partition_id.to_string().clone()));
+                let offset = partition.get_offset();
+                eprintln!("Broker received consumer request for offset");
+                warp::reply::json(&offset)
+            }
+        });
 
-        warp::serve(producer_sends_message.or(consumer_requests_message).or(consumer_get_offset))
-            .run(([127, 0, 0, 1], self.addr))
-            .await;
+        warp::serve(
+            producer_sends_message
+                .or(consumer_requests_message)
+                .or(consumer_get_offset),
+        )
+        .run(([127, 0, 0, 1], self.addr))
+        .await;
     }
 }

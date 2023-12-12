@@ -7,7 +7,7 @@ use warp::Filter;
 
 use crate::{
     consumer_group::ConsumerGroup,
-    listeners::{ConsumerAddGroup, ProducerAddsTopic, ConsumerSubscribes},
+    listeners::{ConsumerAddGroup, ConsumerSubscribes, ProducerAddsTopic},
     ConsumerGroupId, PartitionId, PartitionInfo, ServerId, Topic,
 };
 
@@ -204,7 +204,9 @@ impl BrokerLead {
             });
 
         let consumer_remove_group = warp::delete()
-            .and(warp::path!("groups" / ConsumerGroupId / "consumers" / ServerId))
+            .and(warp::path!(
+                "groups" / ConsumerGroupId / "consumers" / ServerId
+            ))
             .map({
                 let topic_to_partitions = self.topic_to_partitions.clone();
                 let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
@@ -222,7 +224,9 @@ impl BrokerLead {
             });
 
         let consumer_check_group = warp::get()
-            .and(warp::path!("groups" / ConsumerGroupId / "consumers" / ServerId))
+            .and(warp::path!(
+                "groups" / ConsumerGroupId / "consumers" / ServerId
+            ))
             .map({
                 let consumer_group_id_to_groups = self.consumer_group_id_to_groups.clone();
                 move |consumer_group_id: ConsumerGroupId, server_id: ServerId| {

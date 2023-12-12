@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use crate::{
-    listeners::{ConsumerAddGroup, ConsumerSubscribes, ConsumerRequestsMessage},
-    ConsumerGroupId, ConsumerInformation, ServerId, Topic, Value, PartitionInfoWithOffset, PartitionInfo, ConsumerResponse,
+    listeners::{ConsumerAddGroup, ConsumerRequestsMessage, ConsumerSubscribes},
+    ConsumerGroupId, ConsumerInformation, ConsumerResponse, PartitionInfo, PartitionInfoWithOffset,
+    ServerId, Topic, Value,
 };
 
 pub struct Consumer {
@@ -109,7 +110,11 @@ impl Consumer {
 
     pub async fn get_offset(&self, partition: &PartitionInfo) -> Result<usize, reqwest::Error> {
         let res = reqwest::Client::new()
-            .get(format!("http://127.0.0.1:{}/{}/offset", partition.server_id(), partition.partition_id()))
+            .get(format!(
+                "http://127.0.0.1:{}/{}/offset",
+                partition.server_id(),
+                partition.partition_id()
+            ))
             .send()
             .await?;
 
@@ -149,7 +154,10 @@ impl Consumer {
             for partition_info in partition_infos {
                 // check if we already have it
                 if let Some(offset) = partition_id_to_offset.get(&partition_info.partition_id()) {
-                    new_partitions.push(PartitionInfoWithOffset::new(partition_info.clone(), *offset));
+                    new_partitions.push(PartitionInfoWithOffset::new(
+                        partition_info.clone(),
+                        *offset,
+                    ));
                 } else {
                     // if not, get the offset
                     let offset = self.get_offset(&partition_info).await?;
@@ -161,7 +169,9 @@ impl Consumer {
 
         let mut all_values = Vec::new();
         for partition_info_with_offset in self.partitions.iter_mut() {
-            let msg: ConsumerRequestsMessage = ConsumerRequestsMessage { offset: partition_info_with_offset.offset() };
+            let msg: ConsumerRequestsMessage = ConsumerRequestsMessage {
+                offset: partition_info_with_offset.offset(),
+            };
             let partition_info = &partition_info_with_offset.partition_info;
             let res = reqwest::Client::new()
                 .get(format!(
@@ -174,9 +184,9 @@ impl Consumer {
                 .await?;
             let res: ConsumerResponse = res.json::<ConsumerResponse>().await?;
             all_values.push(res.value);
-            partition_info_with_offset.offset = res.new_offset;            
+            partition_info_with_offset.offset = res.new_offset;
         }
-        
+
         Ok(all_values)
     }
 }
