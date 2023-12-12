@@ -4,7 +4,7 @@ use std::{
 };
 use warp::Filter;
 
-use crate::{PartitionId, ServerId, listeners};
+use crate::{listeners, PartitionId, ServerId};
 
 use self::utils::Partition;
 

@@ -17,10 +17,10 @@ pub mod producer;
 // TODO: most of this should be in a utils file, not here
 // really should just be importigna and re-exposing certain things
 mod listeners {
-/****************** FOR THE BROKER LISTENERS ******/
+    /****************** FOR THE BROKER LISTENERS ******/
     use serde::{Deserialize, Serialize};
 
-    use crate::{Topic, Value, ServerId};
+    use crate::{ServerId, Topic, Value};
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct ProducerSendsMessage {
@@ -46,7 +46,7 @@ mod listeners {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct ConsumerAddGroup { 
+    pub struct ConsumerAddGroup {
         pub consumer_id: ServerId,
     }
 }

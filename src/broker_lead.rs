@@ -7,8 +7,10 @@ use std::{
 use warp::Filter;
 
 use crate::{
-    broker::Broker, consumer_group::ConsumerGroup, ConsumerGroupId, PartitionId, PartitionInfo,
-    ServerId, Topic, listeners::{ProducerAddsTopic, ConsumerAddGroup},
+    broker::Broker,
+    consumer_group::ConsumerGroup,
+    listeners::{ConsumerAddGroup, ProducerAddsTopic},
+    ConsumerGroupId, PartitionId, PartitionInfo, ServerId, Topic,
 };
 
 mod utils;

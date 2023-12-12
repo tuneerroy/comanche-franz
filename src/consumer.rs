@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{ConsumerGroupId, ConsumerInformation, PartitionInfo, ServerId, Topic, Value, listeners::{ConsumerSubscribes, ConsumerAddGroup}};
+use crate::{
+    listeners::{ConsumerAddGroup, ConsumerSubscribes},
+    ConsumerGroupId, ConsumerInformation, PartitionInfo, ServerId, Topic, Value,
+};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ConsumerRequestsMessage {
@@ -80,8 +83,7 @@ impl Consumer {
         reqwest::Client::new()
             .post(format!(
                 "http://localhost:{}/{}/consumers",
-                self.broker_leader_addr,
-                consumer_group_id
+                self.broker_leader_addr, consumer_group_id
             ))
             .json(&message)
             .send()

@@ -13,7 +13,7 @@ enum Service {
 fn read<T: std::str::FromStr>(message: &str) -> T {
     print!("{}", message);
     std::io::stdout().flush().unwrap();
-    
+
     let mut input = String::new();
     loop {
         std::io::stdin().read_line(&mut input).unwrap();
@@ -46,7 +46,8 @@ async fn main() {
             let broker_count: usize = read("Enter number of brokers: ");
             let partition_count: usize = read("Enter number of partitions: ");
 
-            let mut broker_lead = comanche_franz::broker_lead::BrokerLead::new(addr, broker_count, partition_count);
+            let mut broker_lead =
+                comanche_franz::broker_lead::BrokerLead::new(addr, broker_count, partition_count);
             eprintln!("Starting broker system...");
             broker_lead.listen().await;
         }
@@ -54,9 +55,11 @@ async fn main() {
             let addr: ServerId = read("Enter server addr: ");
             let broker_leader_addr: ServerId = read("Enter broker leader addr: ");
 
-            let mut producer = comanche_franz::producer::Producer::new(addr, broker_leader_addr).await;
+            let mut producer =
+                comanche_franz::producer::Producer::new(addr, broker_leader_addr).await;
             loop {
-                let action: usize = read("Enter action (0: add topic, 1: remove topic, 2: send message): ");
+                let action: usize =
+                    read("Enter action (0: add topic, 1: remove topic, 2: send message): ");
                 match action {
                     0 => {
                         let topic: String = read("Enter topic: ");
@@ -95,7 +98,10 @@ async fn main() {
                     }
                     2 => {
                         let consumer_group_id: String = read("Enter consumer group id: ");
-                        consumer.join_consumer_group(consumer_group_id).await.unwrap();
+                        consumer
+                            .join_consumer_group(consumer_group_id)
+                            .await
+                            .unwrap();
                     }
                     3 => {
                         consumer.leave_consumer_group().await.unwrap();

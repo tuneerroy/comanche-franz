@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::{PartitionInfo, ServerId, Topic, Value, listeners::{ProducerAddsTopic, self}};
+use crate::{
+    listeners::{self, ProducerAddsTopic},
+    PartitionInfo, ServerId, Topic, Value,
+};
 
 mod utils;
 
@@ -25,7 +28,9 @@ impl Producer {
             return Ok(());
         }
 
-        let message: ProducerAddsTopic = ProducerAddsTopic { topic: topic.clone() };
+        let message: ProducerAddsTopic = ProducerAddsTopic {
+            topic: topic.clone(),
+        };
         let res = reqwest::Client::new()
             .post(format!(
                 "http://127.0.0.1:{}/topics",
