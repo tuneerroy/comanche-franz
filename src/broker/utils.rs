@@ -5,7 +5,7 @@ const FILE_PATH: &str = "data/";
 
 pub struct Partition {
     buffer: String,
-    fileoffset: usize,
+    file_offset: usize,
     filename: String,
 }
 
@@ -13,7 +13,7 @@ impl Partition {
     pub fn new(filename: String) -> Partition {
         Partition {
             buffer: String::new(),
-            fileoffset: 0,
+            file_offset: 0,
             filename,
         }
     }
@@ -31,13 +31,13 @@ impl Partition {
 
             file.write_all(self.buffer[..BUFFER_SIZE / 2].as_bytes())
                 .unwrap();
-            self.fileoffset += self.buffer[..BUFFER_SIZE / 2].len();
+            self.file_offset += self.buffer[..BUFFER_SIZE / 2].len();
             self.buffer = self.buffer[BUFFER_SIZE / 2..].to_string();
         }
     }
 
     pub fn read(&mut self, offset: usize) -> String {
-        if offset < self.fileoffset {
+        if offset < self.file_offset {
             let filename = FILE_PATH.to_string() + &self.filename;
             let mut file = std::fs::OpenOptions::new()
                 .read(true)
@@ -47,11 +47,11 @@ impl Partition {
             file.read_to_string(&mut buffer).unwrap();
             buffer[offset..].to_string() + &self.buffer
         } else {
-            self.buffer[offset - self.fileoffset..].to_string()
+            self.buffer[offset - self.file_offset..].to_string()
         }
     }
 
     pub fn get_offset(&self) -> usize {
-        self.fileoffset + self.buffer.len()
+        self.file_offset + self.buffer.len()
     }
 }
