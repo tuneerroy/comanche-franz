@@ -78,7 +78,7 @@ async fn main() {
             let broker_leader_addr: ServerId = 8000;
             // let broker_leader_addr: ServerId = read("Enter broker leader addr: ");
 
-            let mut producer = Producer::new(broker_leader_addr).await;
+            let mut producer = Producer::new(broker_leader_addr);
             loop {
                 let action: usize =
                     read("Enter action (0: add topic, 1: remove topic, 2: send message): ");
@@ -176,7 +176,7 @@ mod tests {
         run_kafka(lead_addr, 8080);
 
         // How a client would make a producer
-        let mut producer = Producer::new(lead_addr).await;
+        let mut producer = Producer::new(lead_addr);
         producer.add_topic("Best foods".to_string()).await.unwrap();
         producer
             .send_message("Best foods".to_string(), "pizza is a good food".to_string())
@@ -191,7 +191,7 @@ mod tests {
         run_kafka(lead_addr, 8080);
 
         // How a client would make a producer
-        let mut producer = Producer::new(lead_addr).await;
+        let mut producer = Producer::new(lead_addr);
         producer.add_topic("Best foods".to_string()).await.unwrap();
         producer.add_topic("Best drinks".to_string()).await.unwrap();
         producer
@@ -228,7 +228,7 @@ mod tests {
         run_kafka(lead_addr, 8080);
 
         // How a client would make a producer
-        let mut producer = Producer::new(lead_addr).await;
+        let mut producer = Producer::new(lead_addr);
         producer.add_topic("Best foods".to_string()).await.unwrap();
 
         let mut consumer = consumer::Consumer::new(8001, lead_addr);
