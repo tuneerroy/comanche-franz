@@ -94,6 +94,17 @@ impl BrokerLead {
                                 .and_modify(|count| *count += 1)
                                 .or_insert(1);
                         }
+                        eprintln!("Partitions created.");
+                    } else {
+                        eprintln!("Partitions already exists.");
+                    }
+
+                    // print partitions
+                    for (topic, partitions) in topic_to_partitions.iter() {
+                        eprintln!("Topic: {}", topic);
+                        for partition in partitions {
+                            eprintln!("  Partition: {}", partition.partition_id);
+                        }
                     }
 
                     topic_to_producer_count
@@ -101,7 +112,8 @@ impl BrokerLead {
                         .and_modify(|count| *count += 1)
                         .or_insert(1);
 
-                    warp::reply::json(&topic_to_partitions[&topic].clone())
+                    let reply: Vec<PartitionInfo> = topic_to_partitions[&topic].clone();
+                    warp::reply::json(&reply);
                 }
             });
 
